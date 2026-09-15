@@ -29,9 +29,12 @@ Unlike many trackers that use the current fuel entry for mileage, this app uses 
 
 ## 📥 Download App
 
-You can download the latest version of the app by clicking the button below:
+You can download the latest version of the app directly from this repository:
 
-[<img src="https://img.shields.io/badge/Download-APK-green?style=for-the-badge&logo=android" alt="Download APK">](app/build/outputs/apk/debug/FuelTracker.apk)
+[<img src="https://img.shields.io/badge/Download-APK-green?style=for-the-badge&logo=android" alt="Download APK">](https://github.com/K-692/FuelTracker/raw/main/FuelTracker.apk)
+
+*Direct download link:* [Download FuelTracker.apk](https://github.com/K-692/FuelTracker/raw/main/FuelTracker.apk) (or download [FuelTracker.apk](FuelTracker.apk) directly from this repository).
+
 
 ---
 *Built with ❤️ for Indian Vehicle Owners.*
