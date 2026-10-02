@@ -32,20 +32,31 @@ const STORAGE_KEYS = {
 
 export const StorageService = {
   /**
-   * Initializes local storage with seed data if currently empty.
+   * Initializes local storage with empty data structures and system fuel types.
    */
   initLocalStorage() {
     if (!localStorage.getItem(STORAGE_KEYS.VEHICLES)) {
-      localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify(INITIAL_VEHICLES));
+      localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify([]));
     }
     if (!localStorage.getItem(STORAGE_KEYS.ENTRIES)) {
-      localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(INITIAL_FUEL_ENTRIES));
+      localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify([]));
     }
     if (!localStorage.getItem(STORAGE_KEYS.FUEL_TYPES)) {
       localStorage.setItem(STORAGE_KEYS.FUEL_TYPES, JSON.stringify(DEFAULT_FUEL_TYPES));
     }
-    if (!localStorage.getItem(STORAGE_KEYS.ACTIVE_VEHICLE)) {
-      localStorage.setItem(STORAGE_KEYS.ACTIVE_VEHICLE, INITIAL_VEHICLES[0].id);
+    // Clean up any legacy pre-seeded demo entries from previous sessions
+    try {
+      const v = JSON.parse(localStorage.getItem(STORAGE_KEYS.VEHICLES) || '[]');
+      if (v.some(item => item.id === 'veh_bike_1' || item.id === 'veh_car_1')) {
+        localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify([]));
+        localStorage.removeItem(STORAGE_KEYS.ACTIVE_VEHICLE);
+      }
+      const e = JSON.parse(localStorage.getItem(STORAGE_KEYS.ENTRIES) || '[]');
+      if (e.some(item => item.id?.startsWith('entry_b') || item.id?.startsWith('entry_c'))) {
+        localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify([]));
+      }
+    } catch {
+      // Ignore JSON parse errors
     }
   },
 
@@ -76,31 +87,10 @@ export const StorageService = {
           const entries = entriesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
           const fuelTypes = fuelTypesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-          // If user has no cloud data yet, offer their initial local data or seed data
-          if (vehicles.length === 0) {
-            const localVehicles = this.getLocalVehicles();
-            const localEntries = this.getLocalEntries();
-            const localTypes = this.getLocalFuelTypes();
-
-            if (localVehicles.length > 0) {
-              await this.uploadToFirestore(user, {
-                vehicles: localVehicles,
-                entries: localEntries,
-                fuelTypes: localTypes.length > 0 ? localTypes : DEFAULT_FUEL_TYPES
-              });
-              return {
-                vehicles: localVehicles,
-                entries: localEntries,
-                fuelTypes: localTypes.length > 0 ? localTypes : DEFAULT_FUEL_TYPES,
-                activeVehicleId: localVehicles[0]?.id || null,
-              };
-            }
-          }
-
           const activeId = localStorage.getItem(STORAGE_KEYS.ACTIVE_VEHICLE) || (vehicles[0]?.id || null);
 
           return {
-            vehicles: vehicles.length > 0 ? vehicles : INITIAL_VEHICLES,
+            vehicles,
             entries,
             fuelTypes: fuelTypes.length > 0 ? fuelTypes : DEFAULT_FUEL_TYPES,
             activeVehicleId: activeId,
@@ -111,30 +101,31 @@ export const StorageService = {
       }
     }
 
-    // Fallback to local storage
+    // Fallback to local storage (strictly empty fields for new users)
+    const localVehicles = this.getLocalVehicles();
     return {
-      vehicles: this.getLocalVehicles(),
+      vehicles: localVehicles,
       entries: this.getLocalEntries(),
       fuelTypes: this.getLocalFuelTypes(),
-      activeVehicleId: localStorage.getItem(STORAGE_KEYS.ACTIVE_VEHICLE) || INITIAL_VEHICLES[0].id,
+      activeVehicleId: localStorage.getItem(STORAGE_KEYS.ACTIVE_VEHICLE) || (localVehicles[0]?.id || null),
     };
   },
 
   getLocalVehicles() {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.VEHICLES);
-      return raw ? JSON.parse(raw) : INITIAL_VEHICLES;
+      return raw ? JSON.parse(raw) : [];
     } catch {
-      return INITIAL_VEHICLES;
+      return [];
     }
   },
 
   getLocalEntries() {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.ENTRIES);
-      return raw ? JSON.parse(raw) : INITIAL_FUEL_ENTRIES;
+      return raw ? JSON.parse(raw) : [];
     } catch {
-      return INITIAL_FUEL_ENTRIES;
+      return [];
     }
   },
 
@@ -320,33 +311,169 @@ export const StorageService = {
 
   /**
    * Generates a JSON export string matching Android's FuelTrackerBackup schema.
+   * Ensures numeric IDs and millisecond refillDate timestamps for Android Gson parsing compatibility.
    */
-  exportBackup(vehicles, fuelTypes, fuelEntries) {
+  exportBackup(vehicles = [], fuelTypes = DEFAULT_FUEL_TYPES, fuelEntries = []) {
+    // Map vehicle IDs to consistent numeric IDs for Android Room entity compatibility
+    const vehicleIdMap = new Map();
+    const formattedVehicles = vehicles.map((v, idx) => {
+      const numericId = typeof v.id === 'number' ? v.id : (idx + 1);
+      vehicleIdMap.set(String(v.id), numericId);
+      return {
+        id: numericId,
+        name: v.name || 'Vehicle',
+        registrationNumber: v.registrationNumber || null,
+        vehicleType: (v.vehicleType || 'CAR').toUpperCase(),
+        manufacturer: v.manufacturer || null,
+        model: v.model || null,
+        year: v.year ? parseInt(v.year, 10) : null,
+        createdAt: typeof v.createdAt === 'number' ? v.createdAt : (Date.now() - (idx * 86400000)),
+      };
+    });
+
+    const fuelTypeIdMap = new Map();
+    const formattedFuelTypes = (fuelTypes.length > 0 ? fuelTypes : DEFAULT_FUEL_TYPES).map((ft, idx) => {
+      const numericId = typeof ft.id === 'number' ? ft.id : (idx + 1);
+      fuelTypeIdMap.set(String(ft.id), numericId);
+      return {
+        id: numericId,
+        name: ft.name,
+        category: ft.category || 'Petrol',
+        brand: ft.brand || null,
+        isSystemFuel: Boolean(ft.isSystemFuel),
+      };
+    });
+
+    const formattedEntries = fuelEntries.map((e, idx) => {
+      const numericId = typeof e.id === 'number' ? e.id : (idx + 1);
+      const mappedVehId = vehicleIdMap.get(String(e.vehicleId)) || 1;
+      const mappedTypeId = fuelTypeIdMap.get(String(e.fuelTypeId)) || 1;
+
+      // Ensure refillDate is a numeric millisecond timestamp for Android's Gson
+      let dateTimestamp = Date.now();
+      if (typeof e.refillDate === 'number') {
+        dateTimestamp = e.refillDate;
+      } else if (typeof e.refillDate === 'string') {
+        const parsed = new Date(e.refillDate).getTime();
+        if (!isNaN(parsed)) dateTimestamp = parsed;
+      }
+
+      return {
+        id: numericId,
+        vehicleId: mappedVehId,
+        fuelTypeId: mappedTypeId,
+        odometer: Number(e.odometer) || 0,
+        fuelAmount: Number(e.fuelAmount) || 0,
+        totalCost: Number(e.totalCost) || 0,
+        pricePerLiter: Number(e.pricePerLiter) || (e.fuelAmount > 0 ? Number((e.totalCost / e.fuelAmount).toFixed(2)) : 0),
+        refillDate: dateTimestamp,
+        notes: e.notes || null,
+        createdAt: typeof e.createdAt === 'number' ? e.createdAt : dateTimestamp,
+      };
+    });
+
     const backupObj = {
-      version: 1,
       appName: 'FuelTracker',
+      version: 1,
       exportedAt: new Date().toISOString(),
-      vehicles: vehicles || [],
-      fuelTypes: fuelTypes || [],
-      fuelEntries: fuelEntries || [],
+      vehicles: formattedVehicles,
+      fuelTypes: formattedFuelTypes,
+      fuelEntries: formattedEntries,
     };
+
     return JSON.stringify(backupObj, null, 2);
+  },
+
+  /**
+   * Validates a backup JSON string and returns parsed metadata for user confirmation.
+   */
+  validateBackup(jsonString) {
+    let parsed;
+    try {
+      parsed = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
+    } catch {
+      throw new Error('The selected file is not a valid JSON document.');
+    }
+
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('Invalid FuelTracker backup format.');
+    }
+
+    const vehicles = Array.isArray(parsed.vehicles) ? parsed.vehicles : [];
+    const entries = Array.isArray(parsed.fuelEntries) 
+      ? parsed.fuelEntries 
+      : (Array.isArray(parsed.entries) ? parsed.entries : []);
+    const fuelTypes = Array.isArray(parsed.fuelTypes) ? parsed.fuelTypes : [];
+
+    if (vehicles.length === 0 && entries.length === 0) {
+      throw new Error('Backup file contains no vehicle profiles or fuel refill entries.');
+    }
+
+    return {
+      vehiclesCount: vehicles.length,
+      entriesCount: entries.length,
+      fuelTypesCount: fuelTypes.length,
+      appName: parsed.appName || 'FuelTracker',
+      exportedAt: parsed.exportedAt || null,
+      parsedData: parsed,
+    };
   },
 
   /**
    * Imports a backup JSON file with re-mapping and validation.
    */
   async importBackup(user, jsonString) {
-    const parsed = JSON.parse(jsonString);
-    if (!parsed || (!parsed.vehicles && !parsed.fuelEntries)) {
-      throw new Error('Invalid FuelTracker backup format.');
-    }
+    const { parsedData } = this.validateBackup(jsonString);
 
-    const importedVehicles = parsed.vehicles || [];
-    const importedFuelTypes = parsed.fuelTypes || DEFAULT_FUEL_TYPES;
-    const importedEntries = parsed.fuelEntries || [];
+    const importedVehicles = (parsedData.vehicles || []).map((v, idx) => ({
+      id: String(v.id || `veh_${Date.now()}_${idx}`),
+      name: v.name || `Vehicle ${idx + 1}`,
+      registrationNumber: v.registrationNumber || '',
+      vehicleType: (v.vehicleType || 'CAR').toUpperCase(),
+      manufacturer: v.manufacturer || '',
+      model: v.model || '',
+      year: v.year ? parseInt(v.year, 10) : '',
+      createdAt: typeof v.createdAt === 'number' ? v.createdAt : Date.now(),
+    }));
 
-    // Merge or replace local storage
+    const importedFuelTypes = (parsedData.fuelTypes && parsedData.fuelTypes.length > 0)
+      ? parsedData.fuelTypes
+      : DEFAULT_FUEL_TYPES;
+
+    const importedEntries = (parsedData.fuelEntries || parsedData.entries || []).map((e, idx) => {
+      // Normalize refillDate: handle Android millisecond timestamp or ISO date string
+      let dateStr = new Date().toISOString().split('T')[0];
+      if (typeof e.refillDate === 'number') {
+        const d = new Date(e.refillDate);
+        if (!isNaN(d.getTime())) dateStr = d.toISOString().split('T')[0];
+      } else if (typeof e.refillDate === 'string') {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(e.refillDate)) {
+          dateStr = e.refillDate;
+        } else {
+          const d = new Date(e.refillDate);
+          if (!isNaN(d.getTime())) dateStr = d.toISOString().split('T')[0];
+        }
+      }
+
+      const matchedType = importedFuelTypes.find(ft => String(ft.id) === String(e.fuelTypeId));
+      const fuelTypeName = e.fuelTypeName || matchedType?.name || 'Regular Petrol';
+
+      return {
+        id: String(e.id || `entry_${Date.now()}_${idx}`),
+        vehicleId: String(e.vehicleId),
+        fuelTypeId: String(e.fuelTypeId || 'ft_1'),
+        fuelTypeName,
+        odometer: Number(e.odometer) || 0,
+        fuelAmount: Number(e.fuelAmount) || 0,
+        totalCost: Number(e.totalCost) || 0,
+        pricePerLiter: Number(e.pricePerLiter) || (Number(e.fuelAmount) > 0 ? Number((Number(e.totalCost) / Number(e.fuelAmount)).toFixed(2)) : 0),
+        refillDate: dateStr,
+        notes: e.notes || '',
+        createdAt: typeof e.createdAt === 'number' ? e.createdAt : Date.now(),
+      };
+    });
+
+    // Save to local storage
     localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify(importedVehicles));
     localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(importedEntries));
     localStorage.setItem(STORAGE_KEYS.FUEL_TYPES, JSON.stringify(importedFuelTypes));

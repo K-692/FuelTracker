@@ -37,63 +37,46 @@ export function Navbar({
             </div>
           </div>
 
-          {/* Navigation Links: ONLY show Overview if NOT signed in. Show all tabs ONLY when signed in */}
-          <nav className="nav-links desktop-only">
-            {user ? (
-              <>
-                <button 
-                  className={`nav-item ${activeTab === 'landing' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('landing')}
-                >
-                  <Sparkles size={16} />
-                  Overview
-                </button>
-                <button 
-                  className={`nav-item ${activeTab === 'track' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('track')}
-                >
-                  <Gauge size={16} />
-                  Track
-                </button>
-                <button 
-                  className={`nav-item ${activeTab === 'garage' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('garage')}
-                >
-                  <Car size={16} />
-                  Garage
-                </button>
-                <button 
-                  className={`nav-item ${activeTab === 'refills' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('refills')}
-                >
-                  <Clock size={16} />
-                  Refills
-                </button>
-                <button 
-                  className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('analytics')}
-                >
-                  <ChartIcon size={16} />
-                  Analytics
-                </button>
-                <button 
-                  className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('settings')}
-                >
-                  <SettingsIcon size={16} />
-                  Settings
-                </button>
-              </>
-            ) : (
+          {/* Navigation Links: ONLY shown when user is signed in (Track, Garage, Refills, Analytics, Settings). No Overview tab! */}
+          {user && (
+            <nav className="nav-links desktop-only">
               <button 
-                className="nav-item active"
-                onClick={() => setActiveTab('landing')}
+                className={`nav-item ${activeTab === 'track' ? 'active' : ''}`}
+                onClick={() => setActiveTab('track')}
               >
-                <Sparkles size={16} />
-                Overview
+                <Gauge size={16} />
+                Track
               </button>
-            )}
-          </nav>
+              <button 
+                className={`nav-item ${activeTab === 'garage' ? 'active' : ''}`}
+                onClick={() => setActiveTab('garage')}
+              >
+                <Car size={16} />
+                Garage
+              </button>
+              <button 
+                className={`nav-item ${activeTab === 'refills' ? 'active' : ''}`}
+                onClick={() => setActiveTab('refills')}
+              >
+                <Clock size={16} />
+                Refills
+              </button>
+              <button 
+                className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
+                onClick={() => setActiveTab('analytics')}
+              >
+                <ChartIcon size={16} />
+                Analytics
+              </button>
+              <button 
+                className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+                onClick={() => setActiveTab('settings')}
+              >
+                <SettingsIcon size={16} />
+                Settings
+              </button>
+            </nav>
+          )}
 
           {/* Action controls (Theme switch + Google Auth) */}
           <div className="nav-actions">

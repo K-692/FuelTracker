@@ -1,20 +1,19 @@
-import React, { useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Sun, 
   Moon, 
   Database, 
   Download, 
   Upload, 
-  RefreshCw, 
-  ShieldCheck, 
+  Check,
   Key, 
   LogIn, 
   LogOut, 
   Sliders, 
-  Info,
   CheckCircle2
 } from 'lucide-react';
 import { isFirebaseConfigured } from '../services/firebase';
+import { StorageService } from '../services/storage';
 
 export function Settings({ 
   theme, 
@@ -29,11 +28,14 @@ export function Settings({
   onOpenFirebaseModal,
   onExportBackup,
   onImportBackup,
-  onResetDemoData,
   showNotification
 }) {
   const fileInputRef = useRef(null);
   const fbReady = isFirebaseConfigured();
+
+  // Staged backup state for explicit submit confirmation
+  const [stagedBackup, setStagedBackup] = useState(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -44,15 +46,36 @@ export function Settings({
       try {
         const text = event.target?.result;
         if (text) {
-          await onImportBackup(text);
-          showNotification('Backup successfully restored!', 'success');
+          const validation = StorageService.validateBackup(text);
+          setStagedBackup({
+            fileName: file.name,
+            vehiclesCount: validation.vehiclesCount,
+            entriesCount: validation.entriesCount,
+            rawJson: text,
+          });
+          showNotification(`File loaded: ${file.name}. Click 'Submit & Populate Data' to restore.`, 'info');
         }
       } catch (err) {
-        showNotification(`Restore failed: ${err.message}`, 'error');
+        showNotification(`Invalid backup file: ${err.message}`, 'error');
+        setStagedBackup(null);
       }
     };
     reader.readAsText(file);
     e.target.value = '';
+  };
+
+  const handleConfirmImport = async () => {
+    if (!stagedBackup) return;
+    try {
+      setIsImporting(true);
+      await onImportBackup(stagedBackup.rawJson);
+      showNotification(`Successfully populated ${stagedBackup.vehiclesCount} vehicles & ${stagedBackup.entriesCount} refills!`, 'success');
+      setStagedBackup(null);
+    } catch (err) {
+      showNotification(`Import failed: ${err.message}`, 'error');
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   return (
@@ -233,25 +256,49 @@ export function Settings({
               accept=".json"
               onChange={handleFileChange}
             />
-
-            <button className="btn btn-ghost" onClick={onResetDemoData} style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>
-              <RefreshCw size={14} />
-              <span>Load Sample Fleet Data</span>
-            </button>
           </div>
-        </div>
 
-        {/* About Card */}
-        <div className="card" style={{ background: 'var(--bg-surface-elevated)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <Info size={18} color="var(--color-primary)" />
-            <h3 style={{ fontSize: '1rem', fontWeight: 800 }}>About FuelTracker Web</h3>
-          </div>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
-            Engineered with strict adherence to physical combustion telemetry. 
-            All mileage formulas evaluate distance traveled using the fuel volume poured in the preceding refill.
-            Build version 1.0.0. Compatible with GitHub Pages, Firebase Hosting, and modern PWA runtimes.
-          </p>
+          {/* Staged Backup Confirmation Section - Appears only after file selection */}
+          {stagedBackup && (
+            <div 
+              style={{ 
+                marginTop: '18px', 
+                padding: '16px 18px', 
+                borderRadius: 'var(--radius-md)', 
+                background: 'var(--bg-surface-elevated)', 
+                border: '1px solid var(--border-active)' 
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <CheckCircle2 size={18} color="var(--color-green)" />
+                <h4 style={{ fontSize: '0.96rem', fontWeight: 800 }}>Backup File Ready to Populate</h4>
+              </div>
+              <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginBottom: '14px', lineHeight: '1.5' }}>
+                Loaded file: <strong>{stagedBackup.fileName}</strong><br />
+                Found: <strong style={{ color: 'var(--color-green)' }}>{stagedBackup.vehiclesCount} vehicle profile(s)</strong> and{' '}
+                <strong style={{ color: 'var(--color-green)' }}>{stagedBackup.entriesCount} fuel refill(s)</strong>.
+              </p>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={handleConfirmImport}
+                  disabled={isImporting}
+                  style={{ padding: '8px 18px' }}
+                >
+                  <Check size={16} />
+                  <span>{isImporting ? 'Populating...' : 'Submit & Populate Data'}</span>
+                </button>
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => setStagedBackup(null)}
+                  disabled={isImporting}
+                  style={{ padding: '8px 14px' }}
+                >
+                  <span>Cancel</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

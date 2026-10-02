@@ -98,6 +98,21 @@ export default function App() {
     }
   }, [user]);
 
+  // Lock landing tab body to non-scrollable so all content fits inside window frame
+  useEffect(() => {
+    if (currentTab === 'landing') {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, [currentTab]);
+
   // Auth Subscription
   useEffect(() => {
     const unsubscribe = subscribeToAuth((authUser) => {
@@ -106,7 +121,9 @@ export default function App() {
       if (authUser) {
         showNotification(`Signed in as ${authUser.displayName || authUser.email}`, 'success');
         // Once signed in, switch to track if on landing page
-        setActiveTab(current => current === 'landing' ? 'track' : current);
+        setActiveTab('track');
+      } else {
+        setActiveTab('landing');
       }
     });
 
@@ -143,8 +160,8 @@ export default function App() {
     }
   };
 
-  // When not signed in, strictly lock tab to 'landing' (Overview)
-  const currentTab = user ? activeTab : 'landing';
+  // When not signed in, strictly lock tab to 'landing'. When signed in, overview is never shown.
+  const currentTab = user ? (activeTab === 'landing' ? 'track' : activeTab) : 'landing';
 
   // Vehicle Management Handlers
   const handleSelectVehicle = (vehicleId) => {
@@ -269,22 +286,6 @@ export default function App() {
     }
   };
 
-  const handleResetDemoData = () => {
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Reset to Sample Data?',
-      message: 'This will reset your local storage to the pre-seeded sample fleet (Royal Enfield bike & Hyundai car) with real previous-fill mileage calculations.',
-      onConfirm: async () => {
-        localStorage.clear();
-        localStorage.setItem('fueltracker_theme', theme);
-        localStorage.setItem('fueltracker_currency', currency);
-        localStorage.setItem('fueltracker_unit', unit);
-        await refreshData();
-        showNotification('Reset to sample fleet data.', 'success');
-      }
-    });
-  };
-
   return (
     <div className="app-container">
       {/* Navigation Bar */}
@@ -300,7 +301,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="main-content">
+      <main className={`main-content ${currentTab === 'landing' ? 'landing-main-content' : ''}`}>
         {currentTab === 'landing' && (
           <LandingPage 
             onOpenTrack={() => setActiveTab('track')}
@@ -311,11 +312,13 @@ export default function App() {
 
         {user && currentTab === 'track' && (
           <Dashboard 
+            user={user}
             vehicles={vehicles}
             activeVehicleId={activeVehicleId}
             onSelectVehicle={handleSelectVehicle}
             entries={fuelEntries}
             onOpenAddRefill={handleOpenAddRefill}
+            onEditRefill={handleOpenEditRefill}
             onOpenAddVehicle={handleOpenAddVehicle}
             onNavigateTab={setActiveTab}
             currency={currency}
@@ -376,7 +379,6 @@ export default function App() {
             onOpenFirebaseModal={() => setIsFirebaseModalOpen(true)}
             onExportBackup={handleExportBackup}
             onImportBackup={handleImportBackup}
-            onResetDemoData={handleResetDemoData}
             showNotification={showNotification}
           />
         )}

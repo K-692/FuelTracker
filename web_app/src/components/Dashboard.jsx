@@ -8,17 +8,20 @@ import {
   TrendingUp, 
   ArrowRight, 
   Clock, 
-  AlertCircle
+  AlertCircle,
+  Edit3
 } from 'lucide-react';
 import { FuelCalculator } from '../domain/FuelCalculator';
 import { formatDate } from '../utils/dateFormatter';
 
 export function Dashboard({ 
+  user,
   vehicles = [], 
   activeVehicleId, 
   onSelectVehicle, 
   entries = [], 
   onOpenAddRefill, 
+  onEditRefill,
   onOpenAddVehicle, 
   onNavigateTab,
   currency = '₹',
@@ -29,6 +32,8 @@ export function Dashboard({
   const stats = FuelCalculator.calculateStatistics(vehicleEntries);
   const enrichedEntries = FuelCalculator.enrichEntries(vehicleEntries);
   const recentEntries = enrichedEntries.slice(0, 4);
+
+  const username = user?.displayName || user?.email?.split('@')[0] || 'Driver';
 
   const getVehicleIcon = (type) => {
     switch (type) {
@@ -45,11 +50,17 @@ export function Dashboard({
       <div className="dashboard-header">
         <div>
           <h1 style={{ fontSize: '1.65rem', fontWeight: 800, marginBottom: '2px' }}>
-            Vehicle Telemetry Track
+            Hi, {username}!
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-            Active Profile: <strong style={{ color: 'var(--text-main)' }}>{activeVehicle?.name || 'No Vehicle Selected'}</strong>
-            {activeVehicle?.registrationNumber && ` • ${activeVehicle.registrationNumber}`}
+            {activeVehicle ? (
+              <>
+                Active Profile: <strong style={{ color: 'var(--text-main)' }}>{activeVehicle.name}</strong>
+                {activeVehicle.registrationNumber && ` • ${activeVehicle.registrationNumber}`}
+              </>
+            ) : (
+              'Welcome to FuelTracker. Start by adding your first vehicle.'
+            )}
           </p>
         </div>
 
@@ -85,60 +96,91 @@ export function Dashboard({
         </div>
       </div>
 
-      {/* Active Vehicle Hero Card */}
-      {activeVehicle && (
-        <div 
-          className="card" 
-          style={{ 
-            marginBottom: '22px', 
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-medium)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '14px'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div 
-              style={{ 
-                width: '48px', 
-                height: '48px', 
-                borderRadius: 'var(--radius-md)', 
-                background: 'var(--color-primary-glow)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.6rem',
-                border: '1px solid var(--border-active)'
-              }}
-            >
-              {getVehicleIcon(activeVehicle.vehicleType)}
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{activeVehicle.name}</h2>
-                <span className="badge badge-primary">{activeVehicle.vehicleType}</span>
-              </div>
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '2px' }}>
-                {activeVehicle.manufacturer} {activeVehicle.model} {activeVehicle.year ? `(${activeVehicle.year})` : ''} 
-                {activeVehicle.registrationNumber && ` • ${activeVehicle.registrationNumber}`}
-              </div>
-            </div>
+      {/* Active Vehicle Hero Card or Empty State Banner */}
+      {vehicles.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', padding: '36px 20px', marginBottom: '22px' }}>
+          <div 
+            style={{ 
+              width: '52px', 
+              height: '52px', 
+              borderRadius: 'var(--radius-md)', 
+              background: 'var(--color-primary-glow)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.8rem',
+              margin: '0 auto 12px auto',
+              border: '1px solid var(--border-active)'
+            }}
+          >
+            🚗
           </div>
-
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-secondary" onClick={() => onNavigateTab('refills')}>
-              <Clock size={15} />
-              <span>History ({vehicleEntries.length})</span>
-            </button>
-            <button className="btn btn-secondary" onClick={() => onNavigateTab('analytics')}>
-              <TrendingUp size={15} />
-              <span>Analytics</span>
-            </button>
-          </div>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '6px' }}>
+            No Vehicles in Garage Yet
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '420px', margin: '0 auto 16px auto' }}>
+            Add your motorcycle, scooter, or car profile to begin tracking mileage and fuel consumption.
+          </p>
+          <button className="btn btn-primary" onClick={onOpenAddVehicle}>
+            <Plus size={16} />
+            <span>Add First Vehicle</span>
+          </button>
         </div>
+      ) : (
+        activeVehicle && (
+          <div 
+            className="card" 
+            style={{ 
+              marginBottom: '22px', 
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-medium)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '14px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div 
+                style={{ 
+                  width: '48px', 
+                  height: '48px', 
+                  borderRadius: 'var(--radius-md)', 
+                  background: 'var(--color-primary-glow)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.6rem',
+                  border: '1px solid var(--border-active)'
+                }}
+              >
+                {getVehicleIcon(activeVehicle.vehicleType)}
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{activeVehicle.name}</h2>
+                  <span className="badge badge-primary">{activeVehicle.vehicleType}</span>
+                </div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '2px' }}>
+                  {activeVehicle.manufacturer} {activeVehicle.model} {activeVehicle.year ? `(${activeVehicle.year})` : ''} 
+                  {activeVehicle.registrationNumber && ` • ${activeVehicle.registrationNumber}`}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="btn btn-secondary" onClick={() => onNavigateTab('refills')}>
+                <Clock size={15} />
+                <span>History ({vehicleEntries.length})</span>
+              </button>
+              <button className="btn btn-secondary" onClick={() => onNavigateTab('analytics')}>
+                <TrendingUp size={15} />
+                <span>Analytics</span>
+              </button>
+            </div>
+          </div>
+        )
       )}
 
       {/* Primary Telemetry Metrics Grid */}
@@ -218,7 +260,18 @@ export function Dashboard({
                 {formatDate(stats.latestRefill.refillDate)}
               </span>
             </div>
-            <span className="badge badge-amber">{stats.latestRefill.fuelTypeName || 'Regular Petrol'}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="badge badge-amber">{stats.latestRefill.fuelTypeName || 'Regular Petrol'}</span>
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => onEditRefill(stats.latestRefill)}
+                style={{ padding: '4px 10px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                title="Edit this refill log"
+              >
+                <Edit3 size={12} />
+                <span>Edit</span>
+              </button>
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '14px' }}>
@@ -310,6 +363,7 @@ export function Dashboard({
                   <th>Fuel Liters</th>
                   <th>Total Cost</th>
                   <th>Calculated Mileage</th>
+                  <th style={{ textAlign: 'center' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -337,6 +391,16 @@ export function Dashboard({
                       ) : (
                         <span className="badge badge-amber">Baseline</span>
                       )}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button 
+                        className="btn-icon-only" 
+                        onClick={() => onEditRefill(entry)}
+                        title="Edit this refill"
+                        style={{ width: '28px', height: '28px' }}
+                      >
+                        <Edit3 size={13} />
+                      </button>
                     </td>
                   </tr>
                 ))}

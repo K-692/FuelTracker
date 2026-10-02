@@ -395,16 +395,30 @@ input, select, textarea {
 }
 
 /* --------------------------------------------------------------------------
-   Epic Simplified Landing Page (Centered, Minimalist)
+   Epic Simplified Landing Page (Centered, Minimalist, Non-Scrollable Window Fit)
    -------------------------------------------------------------------------- */
+.main-content.landing-main-content {
+  height: calc(100vh - 65px);
+  height: calc(100dvh - 65px);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  max-width: 1000px;
+}
+
 .landing-page-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 180px);
   width: 100%;
+  height: 100%;
+  max-height: calc(100vh - 65px);
+  max-height: calc(100dvh - 65px);
   margin: 0 auto;
+  overflow: hidden;
 }
 
 .landing-hero {
@@ -413,10 +427,10 @@ input, select, textarea {
   align-items: center;
   justify-content: center;
   text-align: center;
-  max-width: 680px;
+  max-width: 760px;
   width: 100%;
   margin: 0 auto;
-  padding: 40px 16px;
+  padding: 10px 16px;
 }
 
 .hero-logo-wrapper {
@@ -424,14 +438,14 @@ input, select, textarea {
   align-items: center;
   justify-content: center;
   width: 100%;
-  margin: 0 auto 20px auto;
+  margin: 0 auto 14px auto;
 }
 
 .hero-logo-large {
-  width: 92px;
-  height: 92px;
-  border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  width: 80px;
+  height: 80px;
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   display: block;
   margin: 0 auto;
   object-fit: contain;
@@ -441,24 +455,32 @@ input, select, textarea {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 16px;
+  padding: 5px 14px;
   border-radius: var(--radius-full);
   background: var(--color-green-glow);
   border: 1px solid rgba(82, 196, 26, 0.4);
   color: var(--color-green);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin: 0 auto 20px auto;
+  margin: 0 auto 14px auto;
 }
 
 .hero-title {
-  font-size: clamp(2.4rem, 4.5vw, 3.8rem);
+  font-size: clamp(1.75rem, 3.8vw, 3.2rem);
   font-weight: 900;
-  line-height: 1.15;
-  margin-bottom: 16px;
+  line-height: 1.2;
+  margin-bottom: 14px;
   text-align: center;
+  white-space: nowrap;
+}
+
+@media (max-width: 540px) {
+  .hero-title {
+    font-size: clamp(1.15rem, 5.6vw, 1.7rem);
+    white-space: nowrap;
+  }
 }
 
 .hero-title .gradient-text {
@@ -468,11 +490,11 @@ input, select, textarea {
 }
 
 .hero-subtitle {
-  font-size: clamp(1rem, 2vw, 1.2rem);
+  font-size: clamp(0.92rem, 1.4vw, 1.1rem);
   color: var(--text-muted);
-  max-width: 640px;
-  margin: 0 auto 36px auto;
-  line-height: 1.6;
+  max-width: 600px;
+  margin: 0 auto 24px auto;
+  line-height: 1.55;
   text-align: center;
 }
 
@@ -483,6 +505,16 @@ input, select, textarea {
   gap: 14px;
   flex-wrap: wrap;
   margin: 0 auto;
+}
+
+.github-hero-link {
+  transition: all var(--transition-fast);
+}
+
+.github-hero-link:hover {
+  border-color: var(--color-green);
+  color: var(--color-green);
+  box-shadow: 0 0 16px var(--color-green-glow);
 }
 
 /* --------------------------------------------------------------------------

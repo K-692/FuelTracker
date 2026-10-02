@@ -32,13 +32,15 @@ Both applications share the identical scientific core principle: **The Previous 
   - Sunset Orange: `#fa8c16`
   - Typography: Google Fonts `Outfit` (headings) and `Plus Jakarta Sans` (data metrics)
 - **Date Formatting:** Standardized strictly across all views to `DD/Apr/YYYY` (e.g. `02/Oct/2026`) via [dateFormatter.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/utils/dateFormatter.js).
-- **Navigation & Views:**
-  - `LandingPage`: "The Ultimate Fuel Tracker" showcase with sign-in call-to-action (Open Track is only rendered for authenticated users).
-  - `Track` (formerly Dashboard): Fleet telemetry overview, active vehicle switcher ribbon, key metric cards, latest refill snapshot, and recent activity table.
-  - `Garage`: Multi-vehicle profile management with categorization icons (🏍️, 🚗, 🛵, 🚙).
+- **Navigation & Authentication Gating:**
+  - **Unauthenticated State:** Navbar strictly presents *only* the FuelTracker brand/logo on the left and the theme toggle + "Google Sign In" button on the right (no "Overview" or other navigation tabs). The landing/overview body is non-scrollable and sized to fit comfortably within the window frame without vertical scrollbars. The heading "The Ultimate Fuel Tracker" is styled to fit on a single line (`white-space: nowrap`).
+  - **Authenticated State:** The Overview tab is completely hidden. The user is automatically routed to the "Track" tab, and the navbar renders the 5 operational tabs: `Track`, `Garage`, `Refills`, `Analytics`, and `Settings`.
+  - `Track` (Telemetry View): Displays personalized greeting `"Hi, <google username>!"`, fleet quick-selector ribbon, key telemetry metric cards (Average Mileage, Cumulative Distance, Total Fuel Cost, Operating Cost), latest refill snapshot card, and recent logs.
+  - `Garage`: Multi-vehicle profile management with categorization icons (🏍️, 🚗, 🛵, 🚙) and empty-state guidance.
   - `Refills`: Chronological refill logs with search, fuel grade filtering, and detailed breakdown.
   - `Analytics`: High-contrast SVG line and bar charts with hover tooltips for mileage trajectories, refill expenses, and pump price evolution.
   - `Settings`: Dual-theme switcher, unit/currency preferences, Firebase keys setup, and JSON backup/restore.
+- **Zero-Demo Initialization:** No demo vehicles or pre-seeded entries are loaded into Firestore or LocalStorage. First-time sign-ins start with completely empty fields, clean empty-state cards, and prompts to configure their genuine vehicle profiles.
 - **Backend & Cloud Database:** Firebase v10/v11 SDK connected to `ultimatefueltracker`:
   - **Google Authentication:** OAuth popup flow with session persistence (`firebase/auth`).
   - **Cloud Firestore:** Remote database collections `users/{userId}/vehicles`, `users/{userId}/fuel_entries`, and `users/{userId}/fuel_types`.
@@ -94,13 +96,20 @@ $$\text{Operating Cost per Distance Unit} = \frac{\text{Total Cost}}{\text{Curre
 - **Scaffolding:** Bootstrapped Vite + React client in `web_app/`.
 - **Design System (`index.css`):** Engineered a simplified, responsive design system utilizing the exact palette from `App_icon/icon.png` (Midnight slate `#0c1322`, speedometer arc `#52c41a` & `#fa8c16`).
 - **Brand Assets:** Linked official `icon.png` as web app logo and browser tab favicon.
-- **Landing Page (`LandingPage.jsx`):** Refined to a clean, high-impact hero. "Open Track" is conditionally displayed only when the user is signed in with Google.
-- **Telemetry Hub (`Dashboard.jsx` / "Track"):** Renamed from Dashboard to Track, displaying formatted `DD/Apr/YYYY` dates across all cards and activity tables.
+- **Landing Page (`LandingPage.jsx`):** Refined to a clean, non-scrollable hero that fits strictly within the viewport window frame. The title `"The Ultimate Fuel Tracker"` is preserved on a single line.
+- **Telemetry Hub (`Dashboard.jsx` / "Track"):** Greets the authenticated user with `"Hi, <google username>!"`, displaying formatted `DD/Apr/YYYY` dates across all cards and activity tables, with an inviting empty state if no vehicle profiles have been configured.
 - **Fleet Garage (`Garage.jsx` & `VehicleModal.jsx`):** Multi-vehicle cards with categorization icons (🏍️, 🚗, 🛵, 🚙), active vehicle switcher, and cascading delete warnings.
 - **Refill Management (`RefillManager.jsx` & `RefillModal.jsx`):** Full history log with fuel type filters, `DD/Apr/YYYY` dates, and live mathematical feedback preview.
 - **Interactive Visual Analytics (`Analytics.jsx` & `Charts.jsx`):** High-contrast SVG charts with formatted date tooltips for Mileage Trajectory, Expenses, and Fuel Price evolution.
 - **Google Auth & Cloud Firestore (`firebase.js` & `storage.js`):** Configured with project credentials for `ultimatefueltracker` supporting Google Sign-In and Firestore document collections.
-- **JSON Portability (`Settings.jsx`):** Implemented export/import conforming to `FuelTracker_AutoBackup.json`, enabling seamless data transfer between the Android app and the Web app.
+- **JSON Portability & Android Interoperability (`Settings.jsx` & `storage.js`):**
+  - **Android-Conforming Export:** Automatically maps vehicle and fuel type identifiers to clean numeric IDs and converts `refillDate` into millisecond numeric timestamps matching Android Room entity types and Gson deserialization expectations.
+  - **Staged Import Workflow:** File selection initiates structural validation via `validateBackup`, displaying an inspectable summary (vehicle count and refill count). Data is strictly populated only when the user clicks the explicit **"Submit & Populate Data"** confirmation button, protecting against accidental overwrites.
+  - Removed "About FuelTracker Web" and legacy "Load Sample Fleet Data" elements.
+- **Universal Refill Editability:** All fuel refill records are editable across the system. Edit buttons are integrated directly into the "Most Recent Refill" snapshot card and "Recent Activity" table on the Track tab, in addition to the Refills manager tab.
+- **GitHub Link Integration (`LandingPage.jsx`):** A sleek, nicely presented GitHub repository button (`https://github.com/K-692/FuelTracker`) with official vector mark is integrated into the Overview hero action group.
+- **Zero-Demo Policy:** Removed all demo entries, sample vehicles, and mock data so new users encounter empty fields ready for their personal vehicle data.
+- **Navbar & Routing Auth Gating:** Unauthenticated state reveals only the logo, theme switch, and sign-in button. Post-authentication state unlocks `Track`, `Garage`, `Refills`, `Analytics`, and `Settings`, hiding the Overview tab.
 
 ### Phase 5: CI/CD & Automated GitHub Deployment
 - Created GitHub Actions workflow [deploy.yml](file:///Users/krish/Desktop/K-692/FuelTracker/.github/workflows/deploy.yml) configuring GitHub Pages deployment on push to `main`.
@@ -124,18 +133,18 @@ $$\text{Operating Cost per Distance Unit} = \frac{\text{Total Cost}}{\text{Curre
 - **Utilities:** [dateFormatter.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/utils/dateFormatter.js)
 - **Services:** [firebase.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/services/firebase.js), [storage.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/services/storage.js), [defaultData.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/services/defaultData.js)
 - **Components:**
-  - [Navbar.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Navbar.jsx): App icon branding, responsive navigation, Track tab, theme switcher, and Google Auth.
-  - [LandingPage.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/LandingPage.jsx): Simplified epic hero with authentication guard for Open Track.
-  - [Dashboard.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Dashboard.jsx): Track telemetry view with `DD/Apr/YYYY` formatting.
+  - [Navbar.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Navbar.jsx): App icon branding, responsive navigation with strict auth-gated tabs (no Overview tab).
+  - [LandingPage.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/LandingPage.jsx): Epic single-line title hero with GitHub repository link button and non-scrollable window container.
+  - [Dashboard.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Dashboard.jsx): Track telemetry view with `"Hi, <google username>!"` header, inline refill edit controls, and empty garage prompt.
   - [Garage.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Garage.jsx): Fleet management and categorization.
-  - [RefillManager.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/RefillManager.jsx): Refill logs with search and date formatting.
+  - [RefillManager.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/RefillManager.jsx): Refill logs with search, fuel type filters, date formatting, and edit/delete actions.
   - [RefillModal.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/RefillModal.jsx): Add/edit fuel entry with live mathematical calculations.
   - [VehicleModal.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/VehicleModal.jsx): Vehicle profile modal.
   - [Analytics.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Analytics.jsx) & [Charts.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Charts.jsx): SVG charts with theme palette colors.
-  - [Settings.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Settings.jsx): Preferences, Cloud sync, and JSON backup/restore.
+  - [Settings.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Settings.jsx): Preferences, Cloud sync, two-stage JSON backup/restore with explicit submit confirmation.
   - [FirebaseModal.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/FirebaseModal.jsx): Credentials management dialog.
   - [ConfirmModal.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/ConfirmModal.jsx): Deletion safety modal.
   - [Toast.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Toast.jsx): Toast feedback notifications.
 - **Design System:** [index.css](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/index.css)
 - **Application Root:** [App.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/App.jsx), [main.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/main.jsx), [index.html](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/index.html)
-- **Configuration & CI/CD:** [vite.config.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/vite.config.js), [.env](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/.env), [deploy.yml](file:///Users/krish/Desktop/K-692/FuelTracker/.github/workflows/deploy.yml)
+- **Configuration & CI/CD:** [vite.config.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/vite.config.js), [deploy.yml](file:///Users/krish/Desktop/K-692/FuelTracker/.github/workflows/deploy.yml)
