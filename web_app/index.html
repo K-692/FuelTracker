@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FuelTracker | The Ultimate Fuel Tracker</title>
+    <meta name="description" content="Precision multi-vehicle fuel and mileage tracking powered by the authentic Previous Fill-Up method." />
+    <meta name="color-scheme" content="dark light" />
+    
+    <!-- Browser Tab App Icon from App_icon/icon.png -->
+    <link rel="icon" type="image/png" href="./icon.png" />
+    <link rel="apple-touch-icon" href="./icon.png" />
+    
+    <!-- Google Fonts: Outfit (headings) and Plus Jakarta Sans (data/body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Prevent FOUC: Read theme preference before render -->
+    <script>
+      (function() {
+        try {
+          const savedTheme = localStorage.getItem('fueltracker_theme');
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const theme = savedTheme ? savedTheme : (prefersDark ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-theme', theme);
+          const meta = document.querySelector('meta[name="color-scheme"]');
+          if (meta) meta.content = theme;
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

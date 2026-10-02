@@ -70,7 +70,7 @@ class AddFuelViewModel @Inject constructor(
             } else {
                 _uiState.update { it.copy(
                     selectedVehicle = vehicles.firstOrNull(),
-                    selectedFuelType = fuelTypes.firstOrNull { ft -> ft.name == "Normal Petrol" } ?: fuelTypes.firstOrNull()
+                    selectedFuelType = fuelTypes.firstOrNull { ft -> ft.name == "Regular Petrol" } ?: fuelTypes.firstOrNull()
                 ) }
             }
         }
@@ -163,16 +163,12 @@ class AddFuelViewModel @Inject constructor(
     }
 
     private fun getDefaultFuelTypes() = listOf(
-        FuelType(name = "Normal Petrol", category = "Petrol", isSystemFuel = true),
-        FuelType(name = "E20 Petrol", category = "Petrol", isSystemFuel = true),
-        FuelType(name = "XP95", category = "Premium Petrol", brand = "IndianOil", isSystemFuel = true),
-        FuelType(name = "XP100", category = "Premium Petrol", brand = "IndianOil", isSystemFuel = true),
-        FuelType(name = "Power95", category = "Premium Petrol", brand = "HPCL", isSystemFuel = true),
-        FuelType(name = "Power100", category = "Premium Petrol", brand = "HPCL", isSystemFuel = true),
-        FuelType(name = "Speed", category = "Premium Petrol", brand = "BPCL", isSystemFuel = true),
-        FuelType(name = "Speed 97", category = "Premium Petrol", brand = "BPCL", isSystemFuel = true),
-        FuelType(name = "Diesel", category = "Diesel", isSystemFuel = true),
-        FuelType(name = "XtraGreen Diesel", category = "Premium Diesel", brand = "IndianOil", isSystemFuel = true),
+        FuelType(name = "Regular Petrol", category = "Petrol", isSystemFuel = true),
+        FuelType(name = "Regular Petrol (E20)", category = "Petrol", isSystemFuel = true),
+        FuelType(name = "Premium Petrol 95", category = "Premium Petrol", isSystemFuel = true),
+        FuelType(name = "Premium Petrol 97+", category = "Premium Petrol", isSystemFuel = true),
+        FuelType(name = "Regular Diesel", category = "Diesel", isSystemFuel = true),
+        FuelType(name = "Premium Diesel", category = "Premium Diesel", isSystemFuel = true),
         FuelType(name = "CNG", category = "CNG", isSystemFuel = true),
         FuelType(name = "Auto LPG", category = "LPG", isSystemFuel = true),
         FuelType(name = "Other", category = "Other", isSystemFuel = true)
