@@ -4,11 +4,7 @@ import {
   Car, 
   Trash2, 
   Edit3, 
-  CheckCircle, 
-  Gauge, 
-  DollarSign, 
-  Clock, 
-  AlertCircle 
+  CheckCircle 
 } from 'lucide-react';
 import { FuelCalculator } from '../domain/FuelCalculator';
 

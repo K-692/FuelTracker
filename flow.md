@@ -116,6 +116,12 @@ $$\text{Operating Cost per Distance Unit} = \frac{\text{Total Cost}}{\text{Curre
 - Configured relative base paths in `vite.config.js` (`base: './'`).
 - Documented live links and repository badges in [README.md](file:///Users/krish/Desktop/K-692/FuelTracker/README.md).
 
+### Phase 6: Blank Screen Resolution, Temporal Dead Zone Fix & ErrorBoundary Hardening
+- **Diagnostic Root Cause Analysis:** Headless browser CDP inspection of the deployed bundle on GitHub Pages (`https://k-692.github.io/FuelTracker/`) identified an uncaught `ReferenceError: Cannot access 'currentTab' before initialization` occurring during component setup. In [App.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/App.jsx), a `useEffect` hook referencing `currentTab` in its dependency array was invoked before `const currentTab` was declared, triggering a JavaScript Temporal Dead Zone (TDZ) crash that halted React mounting.
+- **TDZ Rectification:** Reordered variable declaration in [App.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/App.jsx), placing `const currentTab` immediately following `user` and `activeTab` states, ensuring it is fully initialized prior to any hook or effect execution.
+- **Fail-Safe UI Architecture:** Added [ErrorBoundary.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/ErrorBoundary.jsx) wrapping the root application in [main.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/main.jsx) to prevent white-screen crashes and provide structured recovery actions (Reload, Reset Cache) if any unexpected runtime exception occurs.
+- **Production Bundle & Chrome Verification:** Rebuilt the production application bundle, validated with `oxlint` (0 errors), and confirmed complete DOM rendering and zero console exceptions via Chrome headless browser testing.
+
 ---
 
 ## 4. Current File Inventory
@@ -133,6 +139,7 @@ $$\text{Operating Cost per Distance Unit} = \frac{\text{Total Cost}}{\text{Curre
 - **Utilities:** [dateFormatter.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/utils/dateFormatter.js)
 - **Services:** [firebase.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/services/firebase.js), [storage.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/services/storage.js), [defaultData.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/services/defaultData.js)
 - **Components:**
+  - [ErrorBoundary.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/ErrorBoundary.jsx): Top-level component error boundary with graceful crash protection.
   - [Navbar.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Navbar.jsx): App icon branding, responsive navigation with strict auth-gated tabs (no Overview tab).
   - [LandingPage.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/LandingPage.jsx): Epic single-line title hero with GitHub repository link button and non-scrollable window container.
   - [Dashboard.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Dashboard.jsx): Track telemetry view with `"Hi, <google username>!"` header, inline refill edit controls, and empty garage prompt.
@@ -148,3 +155,4 @@ $$\text{Operating Cost per Distance Unit} = \frac{\text{Total Cost}}{\text{Curre
 - **Design System:** [index.css](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/index.css)
 - **Application Root:** [App.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/App.jsx), [main.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/main.jsx), [index.html](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/index.html)
 - **Configuration & CI/CD:** [vite.config.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/vite.config.js), [deploy.yml](file:///Users/krish/Desktop/K-692/FuelTracker/.github/workflows/deploy.yml)
+

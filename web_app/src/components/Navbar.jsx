@@ -8,8 +8,7 @@ import {
   Car, 
   Clock, 
   LineChart as ChartIcon, 
-  Settings as SettingsIcon,
-  Sparkles
+  Settings as SettingsIcon
 } from 'lucide-react';
 
 export function Navbar({ 

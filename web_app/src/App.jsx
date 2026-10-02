@@ -40,6 +40,9 @@ export default function App() {
   const [fuelEntries, setFuelEntries] = useState([]);
   const [fuelTypes, setFuelTypes] = useState(DEFAULT_FUEL_TYPES);
 
+  // When not signed in, strictly lock tab to 'landing'. When signed in, overview is never shown.
+  const currentTab = user ? (activeTab === 'landing' ? 'track' : activeTab) : 'landing';
+
   // Localization preferences
   const [currency, setCurrency] = useState(() => localStorage.getItem('fueltracker_currency') || '₹');
   const [unit, setUnit] = useState(() => localStorage.getItem('fueltracker_unit') || 'km');
@@ -159,9 +162,6 @@ export default function App() {
       showNotification(`Sign Out failed: ${err.message}`, 'error');
     }
   };
-
-  // When not signed in, strictly lock tab to 'landing'. When signed in, overview is never shown.
-  const currentTab = user ? (activeTab === 'landing' ? 'track' : activeTab) : 'landing';
 
   // Vehicle Management Handlers
   const handleSelectVehicle = (vehicleId) => {
