@@ -119,6 +119,14 @@ export default function App() {
       await loginWithGoogle();
     } catch (err) {
       if (err.code === 'auth/popup-closed-by-user') return;
+      if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
+        const domain = window.location.hostname || 'k-692.github.io';
+        showNotification(
+          `Unauthorized Domain: Add "${domain}" in Firebase Console -> Authentication -> Settings -> Authorized domains`,
+          'error'
+        );
+        return;
+      }
       showNotification(`Sign In Error: ${err.message}`, 'error');
     }
   };
@@ -134,6 +142,9 @@ export default function App() {
       showNotification(`Sign Out failed: ${err.message}`, 'error');
     }
   };
+
+  // When not signed in, strictly lock tab to 'landing' (Overview)
+  const currentTab = user ? activeTab : 'landing';
 
   // Vehicle Management Handlers
   const handleSelectVehicle = (vehicleId) => {
@@ -278,7 +289,7 @@ export default function App() {
     <div className="app-container">
       {/* Navigation Bar */}
       <Navbar 
-        activeTab={activeTab}
+        activeTab={currentTab}
         setActiveTab={setActiveTab}
         theme={theme}
         toggleTheme={toggleTheme}
@@ -290,7 +301,7 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="main-content">
-        {activeTab === 'landing' && (
+        {currentTab === 'landing' && (
           <LandingPage 
             onOpenTrack={() => setActiveTab('track')}
             onGoogleSignIn={handleGoogleSignIn}
@@ -298,7 +309,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'track' && (
+        {user && currentTab === 'track' && (
           <Dashboard 
             vehicles={vehicles}
             activeVehicleId={activeVehicleId}
@@ -312,7 +323,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'garage' && (
+        {user && currentTab === 'garage' && (
           <Garage 
             vehicles={vehicles}
             activeVehicleId={activeVehicleId}
@@ -326,7 +337,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'refills' && (
+        {user && currentTab === 'refills' && (
           <RefillManager 
             vehicles={vehicles}
             activeVehicleId={activeVehicleId}
@@ -340,7 +351,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'analytics' && (
+        {user && currentTab === 'analytics' && (
           <Analytics 
             vehicles={vehicles}
             activeVehicleId={activeVehicleId}
@@ -351,7 +362,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'settings' && (
+        {user && currentTab === 'settings' && (
           <Settings 
             theme={theme}
             toggleTheme={toggleTheme}

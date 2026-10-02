@@ -19,8 +19,7 @@ export function Navbar({
   toggleTheme, 
   user, 
   onGoogleSignIn, 
-  onSignOut,
-  isFirebaseConfigured
+  onSignOut
 }) {
   return (
     <>
@@ -38,62 +37,62 @@ export function Navbar({
             </div>
           </div>
 
-          {/* Desktop Navigation Links */}
+          {/* Navigation Links: ONLY show Overview if NOT signed in. Show all tabs ONLY when signed in */}
           <nav className="nav-links desktop-only">
-            <button 
-              className={`nav-item ${activeTab === 'landing' ? 'active' : ''}`}
-              onClick={() => setActiveTab('landing')}
-            >
-              <Sparkles size={16} />
-              Overview
-            </button>
-
-            {/* Track is the main telemetry hub */}
-            <button 
-              className={`nav-item ${activeTab === 'track' ? 'active' : ''}`}
-              onClick={() => {
-                if (user) {
-                  setActiveTab('track');
-                } else {
-                  onGoogleSignIn();
-                }
-              }}
-            >
-              <Gauge size={16} />
-              Track
-            </button>
-
-            <button 
-              className={`nav-item ${activeTab === 'garage' ? 'active' : ''}`}
-              onClick={() => setActiveTab('garage')}
-            >
-              <Car size={16} />
-              Garage
-            </button>
-
-            <button 
-              className={`nav-item ${activeTab === 'refills' ? 'active' : ''}`}
-              onClick={() => setActiveTab('refills')}
-            >
-              <Clock size={16} />
-              Refills
-            </button>
-
-            <button 
-              className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
-              onClick={() => setActiveTab('analytics')}
-            >
-              <ChartIcon size={16} />
-              Analytics
-            </button>
-
-            <button 
-              className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-              onClick={() => setActiveTab('settings')}
-            >
-              <SettingsIcon size={16} />
-              Settings
-            </button>
+            {user ? (
+              <>
+                <button 
+                  className={`nav-item ${activeTab === 'landing' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('landing')}
+                >
+                  <Sparkles size={16} />
+                  Overview
+                </button>
+                <button 
+                  className={`nav-item ${activeTab === 'track' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('track')}
+                >
+                  <Gauge size={16} />
+                  Track
+                </button>
+                <button 
+                  className={`nav-item ${activeTab === 'garage' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('garage')}
+                >
+                  <Car size={16} />
+                  Garage
+                </button>
+                <button 
+                  className={`nav-item ${activeTab === 'refills' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('refills')}
+                >
+                  <Clock size={16} />
+                  Refills
+                </button>
+                <button 
+                  className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('analytics')}
+                >
+                  <ChartIcon size={16} />
+                  Analytics
+                </button>
+                <button 
+                  className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('settings')}
+                >
+                  <SettingsIcon size={16} />
+                  Settings
+                </button>
+              </>
+            ) : (
+              <button 
+                className="nav-item active"
+                onClick={() => setActiveTab('landing')}
+              >
+                <Sparkles size={16} />
+                Overview
+              </button>
+            )}
           </nav>
 
           {/* Action controls (Theme switch + Google Auth) */}
@@ -161,50 +160,46 @@ export function Navbar({
         </div>
       </header>
 
-      {/* Mobile Bottom Navigation Bar */}
-      <nav className="mobile-bottom-nav">
-        <button 
-          className={`mobile-nav-item ${activeTab === 'track' ? 'active' : ''}`}
-          onClick={() => {
-            if (user) {
-              setActiveTab('track');
-            } else {
-              onGoogleSignIn();
-            }
-          }}
-        >
-          <Gauge size={19} />
-          <span>Track</span>
-        </button>
-        <button 
-          className={`mobile-nav-item ${activeTab === 'garage' ? 'active' : ''}`}
-          onClick={() => setActiveTab('garage')}
-        >
-          <Car size={19} />
-          <span>Garage</span>
-        </button>
-        <button 
-          className={`mobile-nav-item ${activeTab === 'refills' ? 'active' : ''}`}
-          onClick={() => setActiveTab('refills')}
-        >
-          <Clock size={19} />
-          <span>Refills</span>
-        </button>
-        <button 
-          className={`mobile-nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
-          onClick={() => setActiveTab('analytics')}
-        >
-          <ChartIcon size={19} />
-          <span>Analytics</span>
-        </button>
-        <button 
-          className={`mobile-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-          onClick={() => setActiveTab('settings')}
-        >
-          <SettingsIcon size={19} />
-          <span>Settings</span>
-        </button>
-      </nav>
+      {/* Mobile Bottom Navigation Bar: ONLY show when user has signed in */}
+      {user && (
+        <nav className="mobile-bottom-nav">
+          <button 
+            className={`mobile-nav-item ${activeTab === 'track' ? 'active' : ''}`}
+            onClick={() => setActiveTab('track')}
+          >
+            <Gauge size={19} />
+            <span>Track</span>
+          </button>
+          <button 
+            className={`mobile-nav-item ${activeTab === 'garage' ? 'active' : ''}`}
+            onClick={() => setActiveTab('garage')}
+          >
+            <Car size={19} />
+            <span>Garage</span>
+          </button>
+          <button 
+            className={`mobile-nav-item ${activeTab === 'refills' ? 'active' : ''}`}
+            onClick={() => setActiveTab('refills')}
+          >
+            <Clock size={19} />
+            <span>Refills</span>
+          </button>
+          <button 
+            className={`mobile-nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
+            onClick={() => setActiveTab('analytics')}
+          >
+            <ChartIcon size={19} />
+            <span>Analytics</span>
+          </button>
+          <button 
+            className={`mobile-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveTab('settings')}
+          >
+            <SettingsIcon size={19} />
+            <span>Settings</span>
+          </button>
+        </nav>
+      )}
     </>
   );
 }
