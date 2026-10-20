@@ -40,7 +40,7 @@ export function Navbar({
           </div>
 
           {/* Navigation Links: ONLY shown when user is signed in */}
-          {user && (
+          {user ? (
             <nav className="nav-links desktop-only">
               <button 
                 className={`nav-item ${activeTab === 'track' ? 'active' : ''}`}
@@ -85,6 +85,8 @@ export function Navbar({
                 Settings
               </button>
             </nav>
+          ) : (
+            <div className="nav-spacer desktop-only" />
           )}
 
           {/* Action controls (Engine Oil Alert + Theme switch + Google Auth) */}
@@ -130,37 +132,25 @@ export function Navbar({
 
             {/* Auth Action */}
             {user ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="nav-user-group">
                 {user.photoURL ? (
                   <img 
                     src={user.photoURL} 
                     alt={user.displayName || 'User'} 
-                    style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2px solid var(--color-green)' }}
+                    className="nav-user-avatar"
                     title={user.email}
                   />
                 ) : (
                   <div 
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      background: 'var(--color-green)',
-                      color: 'white',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 700,
-                      fontSize: '0.82rem'
-                    }}
+                    className="nav-user-avatar-placeholder"
                     title={user.email}
                   >
                     {(user.displayName || user.email || 'U')[0].toUpperCase()}
                   </div>
                 )}
                 <button 
-                  className="btn btn-secondary" 
+                  className="btn btn-secondary btn-nav-auth" 
                   onClick={onSignOut}
-                  style={{ padding: '7px 11px', fontSize: '0.82rem' }}
                   title="Sign Out"
                 >
                   <LogOut size={14} />
@@ -169,9 +159,8 @@ export function Navbar({
               </div>
             ) : (
               <button 
-                className="btn btn-primary" 
+                className="btn btn-primary btn-nav-auth" 
                 onClick={onGoogleSignIn}
-                style={{ padding: '7px 14px', fontSize: '0.85rem' }}
               >
                 <LogIn size={15} />
                 <span>Google Sign In</span>

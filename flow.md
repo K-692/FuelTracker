@@ -200,6 +200,17 @@ $$\text{Status} = \begin{cases}
   - **Component Servicing Frequency & Count Plot:** Ranks how many times each component has been serviced for the active vehicle along with total expenditure.
   - **Component Price Analysis Over Time:** Interactive SVG line chart with component selector, current price, min/max historical charges, average cost, and percentage inflation/deflation trend.
 
+### Phase 11: Navbar Center-Alignment, Geometric Grid Architecture, and Standardized Vertical Centering
+- Diagnosed root-cause misalignment between desktop navigation tabs, brand logo, and action controls:
+  - Flexbox `justify-content: space-between` skewed navigation links towards the left due to asymmetry between the brand logo (~150px) and the actions cluster (~350px).
+  - Component heights and baselines varied across buttons (30px oil chip, 38px theme toggle, 32px avatar, 34px sign out), causing ragged vertical baselines.
+- Re-architected `.navbar-inner` with a 3-column CSS Grid (`grid-template-columns: 1fr auto 1fr;`):
+  - **Left column (`1fr`):** `.brand-logo` aligned with `justify-self: start`.
+  - **Center column (`auto`):** `.nav-links` (or `.nav-spacer` when logged out) with `justify-self: center`, mathematically guaranteeing absolute horizontal centering in the navbar regardless of left/right item widths.
+  - **Right column (`1fr`):** `.nav-actions` aligned with `justify-self: end`.
+- Standardized vertical height to 36px across all interactive navbar elements (`.nav-item`, `.nav-oil-chip`, `.btn-icon-only`, `.btn-nav-auth`, and user avatar) with `display: inline-flex; align-items: center; justify-content: center; line-height: 1;`.
+- Refined responsive breakpoints (`@media (max-width: 900px)`) to cleanly transition desktop tabs into the bottom navigation bar and safeguard medium desktop widths (901px-1180px) with adaptive padding and font sizing.
+
 ---
 
 ## 4. Current File Inventory
