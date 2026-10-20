@@ -10,7 +10,8 @@ import {
   LogIn, 
   LogOut, 
   Sliders, 
-  CheckCircle2
+  CheckCircle2,
+  Wrench
 } from 'lucide-react';
 import { isFirebaseConfigured } from '../services/firebase';
 import { StorageService } from '../services/storage';
@@ -22,6 +23,8 @@ export function Settings({
   setCurrency, 
   unit, 
   setUnit, 
+  engineOilInterval = 5000,
+  setEngineOilInterval,
   user, 
   onGoogleSignIn, 
   onSignOut,
@@ -51,6 +54,8 @@ export function Settings({
             fileName: file.name,
             vehiclesCount: validation.vehiclesCount,
             entriesCount: validation.entriesCount,
+            servicesCount: validation.servicesCount || 0,
+            engineOilInterval: validation.engineOilInterval || 5000,
             rawJson: text,
           });
           showNotification(`File loaded: ${file.name}. Click 'Submit & Populate Data' to restore.`, 'info');
@@ -69,7 +74,10 @@ export function Settings({
     try {
       setIsImporting(true);
       await onImportBackup(stagedBackup.rawJson);
-      showNotification(`Successfully populated ${stagedBackup.vehiclesCount} vehicles & ${stagedBackup.entriesCount} refills!`, 'success');
+      showNotification(
+        `Successfully restored ${stagedBackup.vehiclesCount} vehicle(s), ${stagedBackup.entriesCount} refill(s), and ${stagedBackup.servicesCount} service record(s)!`, 
+        'success'
+      );
       setStagedBackup(null);
     } catch (err) {
       showNotification(`Import failed: ${err.message}`, 'error');
@@ -86,7 +94,7 @@ export function Settings({
             System Settings & Preferences
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Customize your visual theme, cloud database connectivity, and data backups.
+            Customize your visual theme, vehicle service intervals, cloud database connectivity, and data backups.
           </p>
         </div>
       </div>
@@ -128,14 +136,14 @@ export function Settings({
           </div>
         </div>
 
-        {/* Currency & Measurement Units */}
+        {/* Currency, Measurement Units & Servicing Preferences */}
         <div className="card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-            <Sliders size={20} color="var(--color-accent-fuel)" />
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Units & Localization</h2>
+            <Sliders size={20} color="var(--color-orange)" />
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Units, Localization & Service Thresholds</h2>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '18px' }}>
             <div className="form-group">
               <label className="form-label">Currency Symbol</label>
               <select 
@@ -166,13 +174,46 @@ export function Settings({
               </select>
             </div>
           </div>
+
+          {/* Engine Oil Change Interval Setting */}
+          <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
+            <div className="form-group">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <label className="form-label" style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Wrench size={14} color="var(--color-primary)" />
+                  Engine Oil Replacement Interval ({unit})
+                </label>
+                <span className="badge badge-primary" style={{ fontSize: '0.72rem' }}>
+                  Navbar Alert Trigger
+                </span>
+              </div>
+              <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                Ideally, vehicle engine oil should be replaced every <strong>5,000 {unit}</strong>. Based on this threshold and your last logged oil service, the top navigation bar dynamically alerts you to how many kilometers remain before your next oil change.
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', maxWidth: '320px' }}>
+                <input 
+                  type="number"
+                  min="500"
+                  step="100"
+                  className="form-input"
+                  style={{ fontWeight: 700, fontSize: '1rem' }}
+                  value={engineOilInterval}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    setEngineOilInterval(isNaN(val) || val <= 0 ? 5000 : val);
+                  }}
+                />
+                <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>{unit}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Cloud Firestore & Google Auth Card */}
         <div className="card">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Database size={20} color="var(--color-accent-blue)" />
+              <Database size={20} color="var(--color-primary)" />
               <h2 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Cloud Sync & Google Auth</h2>
             </div>
 
@@ -205,7 +246,7 @@ export function Settings({
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                  Connect your Google Account to automatically sync telemetry data with Cloud Firestore.
+                  Connect your Google Account to automatically sync telemetry and maintenance data with Cloud Firestore.
                 </div>
                 <button className="btn btn-primary" onClick={onGoogleSignIn} style={{ fontSize: '0.88rem' }}>
                   <LogIn size={15} />
@@ -226,22 +267,21 @@ export function Settings({
           </div>
         </div>
 
-        {/* Android Backup & Universal Portability */}
+        {/* Universal JSON Backup & Restore */}
         <div className="card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
             <Download size={20} color="var(--color-primary)" />
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Android App Data Portability</h2>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Data Backup & Recovery (JSON)</h2>
           </div>
 
           <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '18px', lineHeight: '1.5' }}>
-            FuelTracker utilizes an open JSON schema (<code>FuelTracker_AutoBackup.json</code>) 
-            fully interoperable between the Android mobile application and this web application.
+            Export or restore your complete fleet data, fuel fill-up logs, and maintenance records into an open JSON document (<code>FuelTracker_AutoBackup.json</code>).
           </p>
 
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <button className="btn btn-secondary" onClick={onExportBackup}>
               <Download size={16} />
-              <span>Export JSON Backup</span>
+              <span>Export Complete JSON Backup</span>
             </button>
 
             <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}>
@@ -275,8 +315,9 @@ export function Settings({
               </div>
               <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginBottom: '14px', lineHeight: '1.5' }}>
                 Loaded file: <strong>{stagedBackup.fileName}</strong><br />
-                Found: <strong style={{ color: 'var(--color-green)' }}>{stagedBackup.vehiclesCount} vehicle profile(s)</strong> and{' '}
-                <strong style={{ color: 'var(--color-green)' }}>{stagedBackup.entriesCount} fuel refill(s)</strong>.
+                Found: <strong style={{ color: 'var(--color-green)' }}>{stagedBackup.vehiclesCount} vehicle profile(s)</strong>,{' '}
+                <strong style={{ color: 'var(--color-green)' }}>{stagedBackup.entriesCount} fuel refill(s)</strong>, and{' '}
+                <strong style={{ color: 'var(--color-green)' }}>{stagedBackup.servicesCount} service record(s)</strong>.
               </p>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button 

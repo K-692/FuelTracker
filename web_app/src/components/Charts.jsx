@@ -297,3 +297,93 @@ export function BarChart({
     </div>
   );
 }
+
+/**
+ * HorizontalBarChart: High-contrast horizontal ranking chart for component service frequency.
+ */
+export function HorizontalBarChart({
+  data = [], // [{ label: 'Engine oil', value: 4, subText: '₹4,800', id: 'engine_oil' }]
+  color = '#52c41a',
+  emptyMessage = 'No components serviced yet'
+}) {
+  const [hoveredIndex, setHoveredIndex] = useState(null);
+
+  if (!data || data.length === 0) {
+    return (
+      <div style={{ padding: '32px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: '0.88rem' }}>
+        {emptyMessage}
+      </div>
+    );
+  }
+
+  const maxVal = Math.max(...data.map(d => Number(d.value) || 0), 1);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+      {data.map((item, idx) => {
+        const pct = Math.max(8, ((Number(item.value) || 0) / maxVal) * 100);
+        const isHovered = hoveredIndex === idx;
+
+        return (
+          <div 
+            key={item.id || idx}
+            onMouseEnter={() => setHoveredIndex(idx)}
+            onMouseLeave={() => setHoveredIndex(null)}
+            style={{
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-sm)',
+              background: isHovered ? 'var(--bg-surface-elevated)' : 'transparent',
+              transition: 'background var(--transition-fast)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.85rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontWeight: 700, color: isHovered ? color : 'var(--text-main)' }}>
+                  {item.label}
+                </span>
+                {item.subText && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                    ({item.subText})
+                  </span>
+                )}
+              </div>
+              <span 
+                style={{ 
+                  fontWeight: 800, 
+                  color: isHovered ? color : 'var(--text-main)',
+                  background: 'var(--bg-surface-elevated)',
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  fontSize: '0.78rem'
+                }}
+              >
+                {item.value} {item.value === 1 ? 'time' : 'times'}
+              </span>
+            </div>
+
+            <div 
+              style={{ 
+                width: '100%', 
+                height: '7px', 
+                background: 'var(--bg-surface-elevated)', 
+                borderRadius: '999px', 
+                overflow: 'hidden' 
+              }}
+            >
+              <div 
+                style={{ 
+                  width: `${pct}%`, 
+                  height: '100%', 
+                  background: isHovered ? '#73d13d' : color, 
+                  borderRadius: '999px',
+                  transition: 'width 0.4s ease, background 0.2s ease'
+                }} 
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+

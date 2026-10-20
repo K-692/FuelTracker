@@ -7,6 +7,7 @@ import {
   Gauge, 
   Car, 
   Clock, 
+  Wrench,
   LineChart as ChartIcon, 
   Settings as SettingsIcon
 } from 'lucide-react';
@@ -18,13 +19,15 @@ export function Navbar({
   toggleTheme, 
   user, 
   onGoogleSignIn, 
-  onSignOut
+  onSignOut,
+  oilStatus = null,
+  unit = 'km'
 }) {
   return (
     <>
       <header className="navbar">
         <div className="navbar-inner">
-          {/* Brand Logo with App_icon/icon.png */}
+          {/* Brand Logo */}
           <div 
             className="brand-logo" 
             onClick={() => setActiveTab(user ? 'track' : 'landing')}
@@ -36,7 +39,7 @@ export function Navbar({
             </div>
           </div>
 
-          {/* Navigation Links: ONLY shown when user is signed in (Track, Garage, Refills, Analytics, Settings). No Overview tab! */}
+          {/* Navigation Links: ONLY shown when user is signed in */}
           {user && (
             <nav className="nav-links desktop-only">
               <button 
@@ -61,6 +64,13 @@ export function Navbar({
                 Refills
               </button>
               <button 
+                className={`nav-item ${activeTab === 'services' ? 'active' : ''}`}
+                onClick={() => setActiveTab('services')}
+              >
+                <Wrench size={16} />
+                Services
+              </button>
+              <button 
                 className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
                 onClick={() => setActiveTab('analytics')}
               >
@@ -77,8 +87,37 @@ export function Navbar({
             </nav>
           )}
 
-          {/* Action controls (Theme switch + Google Auth) */}
+          {/* Action controls (Engine Oil Alert + Theme switch + Google Auth) */}
           <div className="nav-actions">
+            {/* Engine Oil Status Alert Chip in the Navigation Bar */}
+            {user && oilStatus && (
+              <button
+                type="button"
+                className={`nav-oil-chip nav-oil-${oilStatus.status}`}
+                onClick={() => setActiveTab('services')}
+                title={
+                  oilStatus.hasHistory
+                    ? `Engine Oil Telemetry: ${
+                        oilStatus.remainingKm > 0 
+                          ? `${oilStatus.remainingKm.toLocaleString()} ${unit} left until next change` 
+                          : `Overdue by ${Math.abs(oilStatus.remainingKm).toLocaleString()} ${unit}!`
+                      } (Last change at ${oilStatus.lastOilOdometer.toLocaleString()} ${unit}). Click to manage Services.`
+                    : `Engine Oil Telemetry: ${oilStatus.remainingKm.toLocaleString()} ${unit} remaining. Click to manage Services.`
+                }
+              >
+                <span className="oil-icon-dot">
+                  {oilStatus.status === 'overdue' ? '🚨' : oilStatus.status === 'warning' ? '⚠️' : '🛢️'}
+                </span>
+                <span className="oil-text-display">
+                  {oilStatus.status === 'overdue' 
+                    ? `Oil Overdue: ${Math.abs(oilStatus.remainingKm).toLocaleString()} ${unit}` 
+                    : oilStatus.status === 'warning'
+                    ? `Oil: ${oilStatus.remainingKm.toLocaleString()} ${unit} left`
+                    : `Oil: ${oilStatus.remainingKm.toLocaleString()} ${unit} left`}
+                </span>
+              </button>
+            )}
+
             {/* Theme Toggle Button */}
             <button 
               className="btn-icon-only" 
@@ -142,7 +181,7 @@ export function Navbar({
         </div>
       </header>
 
-      {/* Mobile Bottom Navigation Bar: ONLY show when user has signed in */}
+      {/* Mobile Bottom Navigation Bar */}
       {user && (
         <nav className="mobile-bottom-nav">
           <button 
@@ -165,6 +204,13 @@ export function Navbar({
           >
             <Clock size={19} />
             <span>Refills</span>
+          </button>
+          <button 
+            className={`mobile-nav-item ${activeTab === 'services' ? 'active' : ''}`}
+            onClick={() => setActiveTab('services')}
+          >
+            <Wrench size={19} />
+            <span>Services</span>
           </button>
           <button 
             className={`mobile-nav-item ${activeTab === 'analytics' ? 'active' : ''}`}

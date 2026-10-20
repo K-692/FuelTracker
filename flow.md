@@ -1,11 +1,10 @@
 # FuelTracker - Project Implementation Flow & Current State
 
 ## 1. Project Overview
-**FuelTracker** is a multi-platform vehicle fuel telemetry and efficiency tracking ecosystem comprising:
-1. **Native Android Application:** Engineered using Kotlin, Jetpack Compose, Material 3, Hilt DI, and Room SQLite.
-2. **Universal Web Application (`web_app/`):** A modern, responsive single-page application built with React, Vite, a dual-theme design system derived from the official app icon palette, Google Authentication, Cloud Firestore synchronization, and automated GitHub Pages CI/CD.
+**FuelTracker** is a high-precision vehicle telemetry, efficiency, and maintenance lifecycle ecosystem. Engineered around the physical combustion reality of **The Previous Fill-Up Calculation Method**, the platform has completed its architectural transition into an exclusively maintained, cloud-synchronized **Universal Web Application (`web_app/`)** deployed continuously via GitHub Actions to GitHub Pages.
 
-Both applications share the identical scientific core principle: **The Previous Fill-Up Calculation Method**.
+> [!NOTE]
+> **Platform Support & Architecture Transition:** Support for native Android and iOS mobile clients has officially concluded. Development is purely focused on the high-performance Universal Web Application.
 
 ---
 
@@ -13,37 +12,34 @@ Both applications share the identical scientific core principle: **The Previous 
 
 ### 2.1 Technology Stack & System Architecture
 
-#### A. Native Android Client (`app/`)
-- **Language & Runtime:** Kotlin (Target JVM 11), Android SDK (compileSdk 34, minSdk 27)
-- **UI Toolkit:** Jetpack Compose with Material 3 design system, Material Icons Extended
-- **Architecture Pattern:** MVVM (Model-View-ViewModel) with unidirectional data flow (UDF) via Kotlin Coroutines & `StateFlow`
-- **Dependency Injection:** Dagger Hilt (`@HiltAndroidApp`, `@HiltViewModel`, `@Singleton`)
-- **Persistence / Database:** Room ORM with SQLite, Foreign Key Cascades & Indices
-- **User Preferences:** Jetpack DataStore (Preferences DataStore)
-- **Data Serialization & Backup:** Google Gson for JSON data export/import and automated recovery
-- **Data Visualization:** Vico Charting library for Compose (`com.patrykandpatrick.vico:compose-m3`)
-- **Build System:** Gradle Kotlin DSL with version catalogs (`libs.versions.toml`)
-
-#### B. Universal Web Client (`web_app/`)
+#### Universal Web Application (`web_app/`)
 - **Framework & Tooling:** React 19, Vite 8, JSX, ES Modules
 - **UI & Design System:** Minimalist dual-theme (Obsidian Dark Mode `#0c1322` & Crisp Slate Light Mode `#f8fafc`) directly harmonized with [`App_icon/icon.png`](file:///Users/krish/Desktop/K-692/FuelTracker/App_icon/icon.png):
   - Primary Green: `#52c41a`
   - Warning/Amber: `#fadb14`
   - Sunset Orange: `#fa8c16`
+  - Danger/Overdue Alert: `#f5222d`
   - Typography: Google Fonts `Outfit` (headings) and `Plus Jakarta Sans` (data metrics)
-- **Date Formatting:** Standardized strictly across all views to `DD/Apr/YYYY` (e.g. `02/Oct/2026`) via [dateFormatter.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/utils/dateFormatter.js).
-- **Navigation & Authentication Gating:**
-  - **Unauthenticated State:** Navbar strictly presents *only* the FuelTracker brand/logo on the left and the theme toggle + "Google Sign In" button on the right (no "Overview" or other navigation tabs). The landing/overview body is non-scrollable and sized to fit comfortably within the window frame without vertical scrollbars. The heading "The Ultimate Fuel Tracker" is styled to fit on a single line (`white-space: nowrap`).
-  - **Authenticated State:** The Overview tab is completely hidden. The user is automatically routed to the "Track" tab, and the navbar renders the 5 operational tabs: `Track`, `Garage`, `Refills`, `Analytics`, and `Settings`.
-  - `Track` (Telemetry View): Displays personalized greeting `"Hi, <google username>!"`, fleet quick-selector ribbon, key telemetry metric cards (Average Mileage, Cumulative Distance, Total Fuel Cost, Operating Cost), latest refill snapshot card, and recent logs.
-  - `Garage`: Multi-vehicle profile management with categorization icons (🏍️, 🚗, 🛵, 🚙) and empty-state guidance.
-  - `Refills`: Chronological refill logs with search, fuel grade filtering, and detailed breakdown.
-  - `Analytics`: High-contrast SVG line and bar charts with hover tooltips for mileage trajectories, refill expenses, and pump price evolution.
-  - `Settings`: Dual-theme switcher, unit/currency preferences, Firebase keys setup, and JSON backup/restore.
-- **Zero-Demo Initialization:** No demo vehicles or pre-seeded entries are loaded into Firestore or LocalStorage. First-time sign-ins start with completely empty fields, clean empty-state cards, and prompts to configure their genuine vehicle profiles.
+- **Standardized Date Formatting:** Standardized strictly across all views to `DD/Apr/YYYY` (e.g. `20/Oct/2026`) via [dateFormatter.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/utils/dateFormatter.js).
+- **Navigation & Operational Hubs:**
+  - **Unauthenticated State:** Minimalist single-frame hero with Google Sign In button and GitHub repository link.
+  - **Authenticated State:** Dynamic top navigation bar rendering 6 primary operational hubs:
+    1. `Track`: Fleet quick-selector ribbon, key telemetry metric cards (Average Mileage, Cumulative Distance, Total Fuel Cost, Operating Cost), latest refill snapshot card, and recent logs.
+    2. `Garage`: Multi-vehicle profile management with categorization icons (🏍️, 🚗, 🛵, 🚙).
+    3. `Refills`: Chronological refill logs with fuel type filters, search, and live preview editing.
+    4. `Services` (New): Complete vehicle-wise maintenance tracking across 60 mechanical, fluid, and electrical components, individual component charges, user-inserted final bills, and full historical editability.
+    5. `Analytics`: High-contrast SVG line and bar charts for fuel efficiency, refill expenses, component servicing count plots, and component price trajectory over time.
+    6. `Settings`: Theme switcher, localization preferences, customizable Engine Oil Service Interval, Firebase keys setup, and JSON backup/restore.
+- **Engine Oil Alert System in Navbar:**
+  - Real-time status chip placed in the navigation bar displaying exact remaining distance before the next scheduled engine oil change.
+  - Status color coding:
+    - 🛢️ `Normal`: Green chip when remaining distance is safe (> 500 km).
+    - ⚠️ `Warning`: Amber chip when within 500 km of target.
+    - 🚨 `Overdue`: Pulsing danger red alert when distance driven exceeds the threshold.
+  - Interactive click navigation directly routing to the Services hub.
 - **Backend & Cloud Database:** Firebase v10/v11 SDK connected to `ultimatefueltracker`:
   - **Google Authentication:** OAuth popup flow with session persistence (`firebase/auth`).
-  - **Cloud Firestore:** Remote database collections `users/{userId}/vehicles`, `users/{userId}/fuel_entries`, and `users/{userId}/fuel_types`.
+  - **Cloud Firestore:** Remote database collections `users/{userId}/vehicles`, `users/{userId}/fuel_entries`, `users/{userId}/services`, and `users/{userId}/fuel_types`.
   - **Resilience:** IndexedDB offline persistence and fallback Local Storage.
 - **CI/CD & Cloud Distribution:** GitHub Actions workflow ([deploy.yml](file:///Users/krish/Desktop/K-692/FuelTracker/.github/workflows/deploy.yml)) deploying directly to GitHub Pages at [https://k-692.github.io/FuelTracker/](https://k-692.github.io/FuelTracker/).
 
@@ -61,98 +57,181 @@ $$\text{Mileage (km/L)} = \frac{\text{Current Odometer} - \text{Previous Odomete
 $$\text{Price per Liter} = \frac{\text{Total Cost}}{\text{Fuel Volume}}$$
 $$\text{Operating Cost per Distance Unit} = \frac{\text{Total Cost}}{\text{Current Odometer} - \text{Previous Odometer}}$$
 
-#### 3. Multi-Vehicle Contextual Isolation
-- Independent odometer timelines, fuel logs, and statistical aggregations per vehicle profile.
-- Cascading deletion guarantees: deleting a vehicle profile cleanly wipes associated fuel entries without leaving orphaned data records.
+#### 3. Engine Oil Replacement Telemetry Formulation
+Let:
+- $O_{\text{latest}} = \max(\{O_{\text{fuel}}\} \cup \{O_{\text{service}}\})$ be the vehicle's current maximum odometer reading.
+- $O_{\text{oil\_last}}$ be the odometer recorded at the most recent service where Engine Oil was replaced.
+- $I_{\text{oil}}$ be the configured service interval (default: $5,000\text{ km}$, configurable in Settings).
+
+The distance driven since the last oil change is:
+$$\Delta O_{\text{oil}} = O_{\text{latest}} - O_{\text{oil\_last}}$$
+
+The remaining distance until the next scheduled replacement is:
+$$O_{\text{remaining}} = I_{\text{oil}} - \Delta O_{\text{oil}}$$
+
+The status indicator evaluates according to the piecewise condition:
+$$\text{Status} = \begin{cases} 
+\text{OVERDUE (🚨)} & \text{if } O_{\text{remaining}} \le 0 \\
+\text{WARNING (⚠️)} & \text{if } 0 < O_{\text{remaining}} \le 500 \\
+\text{OK (🛢️)} & \text{if } O_{\text{remaining}} > 500 
+\end{cases}$$
+
+#### 4. Component-Level Price Trajectory & Servicing Frequency
+- **Component Frequency:** Sum of servicing occurrences $\sum \mathbb{I}(\text{component}_i = \text{Yes})$ for vehicle $V$.
+- **Component Price Trend:** For any component $c$ serviced at historical dates $t_1, t_2, \dots, t_k$:
+  $$\text{Price Trend (\%)} = \frac{P_k - P_1}{P_1} \times 100$$
+  where $P_1$ is baseline replacement charge and $P_k$ is latest replacement charge.
+
+---
+
+### 2.3 The 60 Vehicle Maintenance Components Taxonomy
+
+| No. | Component | Vehicle Label | System Classification |
+|---|---|---|---|
+| 1 | Engine oil | Both | Engine & Lubrication |
+| 2 | Engine | Both | Engine & Lubrication |
+| 3 | Oil filter | Both | Engine & Lubrication |
+| 4 | Air filter | Both | Ignition & Fuel System |
+| 5 | Cabin AC filter | Car | Body, Cabin & Climate |
+| 6 | Fuel filter | Both | Ignition & Fuel System |
+| 7 | Fuel injectors | Both | Ignition & Fuel System |
+| 8 | Spark plugs | Both | Ignition & Fuel System |
+| 9 | Ignition coils | Both | Ignition & Fuel System |
+| 10 | Cooling system | Both | Cooling System |
+| 11 | Coolant | Both | Cooling System |
+| 12 | Radiator | Both (liquid-cooled) | Cooling System |
+| 13 | Radiator fan | Both (liquid-cooled) | Cooling System |
+| 14 | Water pump | Both (liquid-cooled) | Cooling System |
+| 15 | Thermostat | Both (liquid-cooled) | Cooling System |
+| 16 | Battery | Both | Electrical, ECU & Sensors |
+| 17 | Alternator / charging system | Both | Electrical, ECU & Sensors |
+| 18 | Starter motor | Both (if equipped) | Electrical, ECU & Sensors |
+| 19 | Braking system | Both | Braking System & Wheels |
+| 20 | Brake pads | Both (disc brakes) | Braking System & Wheels |
+| 21 | Brake discs and drums | Both | Braking System & Wheels |
+| 22 | Brake fluid | Both (hydraulic brakes) | Braking System & Wheels |
+| 23 | ABS system | Both (if equipped) | Braking System & Wheels |
+| 24 | Tyres | Both | Braking System & Wheels |
+| 25 | Wheel alignment | Both | Braking System & Wheels |
+| 26 | Wheel balancing | Both | Braking System & Wheels |
+| 27 | Suspension system | Both | Suspension & Steering |
+| 28 | Shock absorbers and struts | Both | Suspension & Steering |
+| 29 | Steering system | Both | Suspension & Steering |
+| 30 | Steering fluid | Car (hydraulic steering) | Suspension & Steering |
+| 31 | Clutch system | Both (manual / applicable transmissions) | Transmission & Drivetrain |
+| 32 | Transmission / gearbox | Both | Transmission & Drivetrain |
+| 33 | Transmission fluid | Both (as specified) | Transmission & Drivetrain |
+| 34 | Driveshafts and CV joints | Car | Transmission & Drivetrain |
+| 35 | Differential | Car (and some specialised bikes) | Transmission & Drivetrain |
+| 36 | Drive belts | Both (where fitted) | Transmission & Drivetrain |
+| 37 | Timing belt or timing chain | Both (depending on engine) | Engine & Lubrication |
+| 38 | Hoses and pipes | Both | Cooling System |
+| 39 | Exhaust system | Both | Exhaust & Emissions |
+| 40 | Catalytic converter | Both (where fitted) | Exhaust & Emissions |
+| 41 | Oxygen sensor | Both (where fitted) | Exhaust & Emissions |
+| 42 | Engine sensors | Both | Electrical, ECU & Sensors |
+| 43 | ECU (Engine Control Unit) | Both (where fitted) | Electrical, ECU & Sensors |
+| 44 | OBD diagnostic system | Both (diagnostic support varies) | Electrical, ECU & Sensors |
+| 45 | Air conditioning system | Car | Body, Cabin & Climate |
+| 46 | Wipers and washer system | Car | Body, Cabin & Climate |
+| 47 | Headlights and tail lights | Both | Electrical, ECU & Sensors |
+| 48 | Horn | Both | Electrical, ECU & Sensors |
+| 49 | Fuel tank and fuel lines | Both (combustion vehicles) | Ignition & Fuel System |
+| 50 | Door locks and hinges | Car | Body, Cabin & Climate |
+| 51 | Seat belts | Car | Body, Cabin & Climate |
+| 52 | Windshield and mirrors | Both | Body, Cabin & Climate |
+| 53 | Parking brake | Both (design varies) | Braking System & Wheels |
+| 54 | Engine and transmission mounts | Both | Engine & Lubrication |
+| 55 | Wheel bearings | Both | Braking System & Wheels |
+| 56 | Chassis and underbody | Both | Body, Cabin & Climate |
+| 57 | Suspension bushings and ball joints | Both (design varies) | Suspension & Steering |
+| 58 | Power steering system | Car | Suspension & Steering |
+| 59 | Emission control system | Both (combustion vehicles) | Exhaust & Emissions |
+| 60 | Vehicle fluids and lubricants | Both | Engine & Lubrication |
 
 ---
 
 ## 3. Implementation Journey
 
-### Phase 1: Domain Logic & Mathematics (Android & Web)
-- Implemented and verified [FuelCalculator](file:///Users/krish/Desktop/K-692/FuelTracker/app/src/main/java/com/fueltracker/domain/calculator/FuelCalculator.kt) singleton in Kotlin and [FuelCalculator.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/domain/FuelCalculator.js) in JavaScript:
-  - Mileage calculation with zero-division and negative-distance guards.
-  - Price per liter calculation.
-  - Net trip distance delta.
-  - Operating cost per kilometer.
-  - Chronological sorting and cumulative metrics aggregation.
+### Phase 1: Domain Logic & Mathematics
+- Implemented [FuelCalculator.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/domain/FuelCalculator.js) for Previous Fill-Up physics, delta distance, unit pricing, and chronological sorting.
 
 ### Phase 2: Relational Data Layer & Entities
-- Standardized entities across SQLite (Room) and Cloud Firestore / LocalStorage:
-  - **Vehicle:** `id`, `name`, `registrationNumber`, `vehicleType` (BIKE, SCOOTER, CAR, OTHER), `manufacturer`, `model`, `year`, `createdAt`.
-  - **FuelType:** `id`, `name`, `category`, `brand`, `isSystemFuel` (Regular Petrol, Regular Petrol E20, Premium Petrol 95, Premium Petrol 97+, Regular Diesel, Premium Diesel, CNG, Auto LPG, Other).
-  - **FuelEntry:** `id`, `vehicleId`, `fuelTypeId`, `odometer`, `fuelAmount`, `totalCost`, `pricePerLiter`, `refillDate`, `notes`, `createdAt`.
+- Standardized schemas across Cloud Firestore and LocalStorage: `vehicles`, `fuel_types`, `fuel_entries`, and `services`.
 
-### Phase 3: Android Jetpack Compose Presentation Layer
-- Designed Material 3 UI with multi-screen navigation:
-  - `VehicleSelectionScreen`: Fleet selection and profile management.
-  - `HomeScreen`: Vehicle telemetry dashboard, quick metrics, and latest refill highlight.
-  - `AddFuelScreen`: Real-time mathematical preview of trip distance, unit price, and mileage.
-  - `FuelHistoryScreen` & `FuelDetailsScreen`: Detailed inspection and deletion safeguards.
-  - `StatisticsScreen`: Cumulative graphs and efficiency averages.
-  - `SettingsScreen`: JSON backup/restore.
+### Phase 3: Android Jetpack Compose Prototype (Legacy)
+- Built prototype Android client; platform support has now concluded in favor of the Universal Web Application.
 
-### Phase 4: Universal Web Application Extension (`web_app/`)
-- **Scaffolding:** Bootstrapped Vite + React client in `web_app/`.
-- **Design System (`index.css`):** Engineered a simplified, responsive design system utilizing the exact palette from `App_icon/icon.png` (Midnight slate `#0c1322`, speedometer arc `#52c41a` & `#fa8c16`).
-- **Brand Assets:** Linked official `icon.png` as web app logo and browser tab favicon.
-- **Landing Page (`LandingPage.jsx`):** Refined to a clean, non-scrollable hero that fits strictly within the viewport window frame. The title `"The Ultimate Fuel Tracker"` is preserved on a single line.
-- **Telemetry Hub (`Dashboard.jsx` / "Track"):** Greets the authenticated user with `"Hi, <google username>!"`, displaying formatted `DD/Apr/YYYY` dates across all cards and activity tables, with an inviting empty state if no vehicle profiles have been configured.
-- **Fleet Garage (`Garage.jsx` & `VehicleModal.jsx`):** Multi-vehicle cards with categorization icons (🏍️, 🚗, 🛵, 🚙), active vehicle switcher, and cascading delete warnings.
-- **Refill Management (`RefillManager.jsx` & `RefillModal.jsx`):** Full history log with fuel type filters, `DD/Apr/YYYY` dates, and live mathematical feedback preview.
-- **Interactive Visual Analytics (`Analytics.jsx` & `Charts.jsx`):** High-contrast SVG charts with formatted date tooltips for Mileage Trajectory, Expenses, and Fuel Price evolution.
-- **Google Auth & Cloud Firestore (`firebase.js` & `storage.js`):** Configured with project credentials for `ultimatefueltracker` supporting Google Sign-In and Firestore document collections.
-- **JSON Portability & Android Interoperability (`Settings.jsx` & `storage.js`):**
-  - **Android-Conforming Export:** Automatically maps vehicle and fuel type identifiers to clean numeric IDs and converts `refillDate` into millisecond numeric timestamps matching Android Room entity types and Gson deserialization expectations.
-  - **Staged Import Workflow:** File selection initiates structural validation via `validateBackup`, displaying an inspectable summary (vehicle count and refill count). Data is strictly populated only when the user clicks the explicit **"Submit & Populate Data"** confirmation button, protecting against accidental overwrites.
-  - Removed "About FuelTracker Web" and legacy "Load Sample Fleet Data" elements.
-- **Universal Refill Editability:** All fuel refill records are editable across the system. Edit buttons are integrated directly into the "Most Recent Refill" snapshot card and "Recent Activity" table on the Track tab, in addition to the Refills manager tab.
-- **GitHub Link Integration (`LandingPage.jsx`):** A sleek, nicely presented GitHub repository button (`https://github.com/K-692/FuelTracker`) with official vector mark is integrated into the Overview hero action group.
-- **Zero-Demo Policy:** Removed all demo entries, sample vehicles, and mock data so new users encounter empty fields ready for their personal vehicle data.
-- **Navbar & Routing Auth Gating:** Unauthenticated state reveals only the logo, theme switch, and sign-in button. Post-authentication state unlocks `Track`, `Garage`, `Refills`, `Analytics`, and `Settings`, hiding the Overview tab.
+### Phase 4: Universal Web Application Extension
+- Created responsive React 19 + Vite 8 SPA with dual-theme design system.
+- Standardized `DD/Apr/YYYY` date formatting across all views.
+- Built interactive SVG charting engine (`Charts.jsx`) with custom tooltips.
 
 ### Phase 5: CI/CD & Automated GitHub Deployment
-- Created GitHub Actions workflow [deploy.yml](file:///Users/krish/Desktop/K-692/FuelTracker/.github/workflows/deploy.yml) configuring GitHub Pages deployment on push to `main`.
-- Configured relative base paths in `vite.config.js` (`base: './'`).
-- Documented live links and repository badges in [README.md](file:///Users/krish/Desktop/K-692/FuelTracker/README.md).
+- Set up GitHub Actions workflow [deploy.yml](file:///Users/krish/Desktop/K-692/FuelTracker/.github/workflows/deploy.yml) deploying directly to GitHub Pages on push to `main`.
 
-### Phase 6: Blank Screen Resolution, Temporal Dead Zone Fix & ErrorBoundary Hardening
-- **Diagnostic Root Cause Analysis:** Headless browser CDP inspection of the deployed bundle on GitHub Pages (`https://k-692.github.io/FuelTracker/`) identified an uncaught `ReferenceError: Cannot access 'currentTab' before initialization` occurring during component setup. In [App.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/App.jsx), a `useEffect` hook referencing `currentTab` in its dependency array was invoked before `const currentTab` was declared, triggering a JavaScript Temporal Dead Zone (TDZ) crash that halted React mounting.
-- **TDZ Rectification:** Reordered variable declaration in [App.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/App.jsx), placing `const currentTab` immediately following `user` and `activeTab` states, ensuring it is fully initialized prior to any hook or effect execution.
-- **Fail-Safe UI Architecture:** Added [ErrorBoundary.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/ErrorBoundary.jsx) wrapping the root application in [main.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/main.jsx) to prevent white-screen crashes and provide structured recovery actions (Reload, Reset Cache) if any unexpected runtime exception occurs.
-- **Production Bundle & Chrome Verification:** Rebuilt the production application bundle, validated with `oxlint` (0 errors), and confirmed complete DOM rendering and zero console exceptions via Chrome headless browser testing.
+### Phase 6: Blank Screen Resolution & ErrorBoundary Hardening
+- Resolved Temporal Dead Zone hook ordering issue in `App.jsx`.
+- Added [ErrorBoundary.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/ErrorBoundary.jsx) wrapping root application.
+
+### Phase 7: Mobile Platform Support Sunset
+- Ended native Android and iOS mobile app development; updated documentation and UI to focus purely on the Universal Web Application.
+- Replaced Android-specific backup nomenclature with universal JSON data backup and recovery schema.
+
+### Phase 8: 60-Component Vehicle Servicing & Maintenance Engine
+- Created [serviceComponents.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/domain/serviceComponents.js) containing the complete 60-component catalogue with intelligent vehicle category filtering (Two-wheelers vs Cars).
+- Implemented [ServiceModal.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/ServiceModal.jsx):
+  - Segmented Yes/No toggles for each component (defaults to `No`).
+  - Active component charge/price input fields.
+  - Final total bill field directly entered by the user with auto-sum assistance.
+  - Category filters, search bar, and vehicle type toggle.
+- Built [Services.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Services.jsx) for vehicle-specific servicing history, summary metrics, and collapsible 60-component checklist inspection.
+- Ensured full editability: past service records can be modified or deleted with real-time recalculation.
+- Updated [storage.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/services/storage.js) with `users/{uid}/services` collection, cascading vehicle deletion, and JSON backup/restore.
+
+### Phase 9: Real-Time Engine Oil Alert System & Navigation Bar Telemetry
+- Created [serviceCalculator.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/domain/serviceCalculator.js) to compute distance driven since the last recorded engine oil change and evaluate remaining distance against the target interval.
+- Added customizable "Engine Oil Replacement Interval" setting in [Settings.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Settings.jsx) (default: 5,000 km).
+- Integrated high-visibility Engine Oil Alert Chip in [Navbar.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Navbar.jsx) with dynamic status (`Normal`, `Warning`, `Overdue` with pulsing red animation) and one-click navigation to the Services hub.
+
+### Phase 10: Component-Level Servicing Analytics & Price Trend Visualizations
+- Created `HorizontalBarChart` in [Charts.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Charts.jsx) to render ranked component service frequency counts.
+- Updated [Analytics.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Analytics.jsx) with a dual-view selector (`Fuel & Efficiency` vs `Servicing & Maintenance`):
+  - **Component Servicing Frequency & Count Plot:** Ranks how many times each component has been serviced for the active vehicle along with total expenditure.
+  - **Component Price Analysis Over Time:** Interactive SVG line chart with component selector, current price, min/max historical charges, average cost, and percentage inflation/deflation trend.
 
 ---
 
 ## 4. Current File Inventory
 
-### Android Application (`app/`)
-- **Domain Layer:** `com.fueltracker.domain.calculator.FuelCalculator`
-- **Data Layer:** `data.entity.*`, `data.local.*`, `data.repository.*`
-- **Dependency Injection:** `di.AppModule`
-- **Navigation:** `navigation.AppNavigation`, `navigation.Screen`
-- **UI Features:** `ui.home`, `ui.fuel`, `ui.history`, `ui.statistics`, `ui.settings`, `ui.vehicles`, `ui.theme`
-- **Application Entry:** `MainActivity`, `FuelTrackerApp`
-
-### Web Application (`web_app/`)
-- **Domain Logic:** [FuelCalculator.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/domain/FuelCalculator.js)
-- **Utilities:** [dateFormatter.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/utils/dateFormatter.js)
-- **Services:** [firebase.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/services/firebase.js), [storage.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/services/storage.js), [defaultData.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/services/defaultData.js)
+### Universal Web Application (`web_app/`)
+- **Domain Logic:**
+  - [FuelCalculator.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/domain/FuelCalculator.js): Previous fill-up calculations.
+  - [serviceComponents.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/domain/serviceComponents.js): 60 vehicle maintenance components catalogue and vehicle type filtering.
+  - [serviceCalculator.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/domain/serviceCalculator.js): Engine oil interval telemetry, component frequency calculation, and price trajectory analysis.
+- **Utilities:**
+  - [dateFormatter.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/utils/dateFormatter.js): Standardized `DD/Apr/YYYY` date formatting.
+- **Services:**
+  - [firebase.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/services/firebase.js): Google Auth & Cloud Firestore credentials.
+  - [storage.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/services/storage.js): Unified data repository managing vehicles, fuel entries, services, preferences, and JSON backup/restore.
+  - [defaultData.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/services/defaultData.js): Standard fuel grades catalogue.
 - **Components:**
-  - [ErrorBoundary.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/ErrorBoundary.jsx): Top-level component error boundary with graceful crash protection.
-  - [Navbar.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Navbar.jsx): App icon branding, responsive navigation with strict auth-gated tabs (no Overview tab).
-  - [LandingPage.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/LandingPage.jsx): Epic single-line title hero with GitHub repository link button and non-scrollable window container.
-  - [Dashboard.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Dashboard.jsx): Track telemetry view with `"Hi, <google username>!"` header, inline refill edit controls, and empty garage prompt.
-  - [Garage.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Garage.jsx): Fleet management and categorization.
-  - [RefillManager.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/RefillManager.jsx): Refill logs with search, fuel type filters, date formatting, and edit/delete actions.
-  - [RefillModal.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/RefillModal.jsx): Add/edit fuel entry with live mathematical calculations.
-  - [VehicleModal.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/VehicleModal.jsx): Vehicle profile modal.
-  - [Analytics.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Analytics.jsx) & [Charts.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Charts.jsx): SVG charts with theme palette colors.
-  - [Settings.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Settings.jsx): Preferences, Cloud sync, two-stage JSON backup/restore with explicit submit confirmation.
-  - [FirebaseModal.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/FirebaseModal.jsx): Credentials management dialog.
+  - [Navbar.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Navbar.jsx): Navigation header with Services tab and dynamic Engine Oil Alert chip.
+  - [Services.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Services.jsx): Vehicle-wise servicing hub, engine oil telemetry card, and 60-component service history.
+  - [ServiceModal.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/ServiceModal.jsx): Add/Edit service record modal with 60-component checklist, price inputs, and final total bill.
+  - [Dashboard.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Dashboard.jsx): Track telemetry view.
+  - [Garage.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Garage.jsx): Vehicle fleet manager.
+  - [RefillManager.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/RefillManager.jsx): Fuel fill-up history.
+  - [RefillModal.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/RefillModal.jsx): Add/Edit fuel fill-up dialog.
+  - [VehicleModal.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/VehicleModal.jsx): Add/Edit vehicle profile dialog.
+  - [Analytics.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Analytics.jsx): Fuel analytics and vehicle servicing analytics.
+  - [Charts.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Charts.jsx): SVG LineChart, BarChart, and HorizontalBarChart.
+  - [Settings.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Settings.jsx): Preferences, engine oil interval configuration, cloud sync, and JSON backup/recovery.
+  - [LandingPage.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/LandingPage.jsx): Welcome hero page.
+  - [ErrorBoundary.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/ErrorBoundary.jsx): Root crash protection wrapper.
+  - [FirebaseModal.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/FirebaseModal.jsx): In-browser Firebase credentials dialog.
   - [ConfirmModal.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/ConfirmModal.jsx): Deletion safety modal.
-  - [Toast.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Toast.jsx): Toast feedback notifications.
+  - [Toast.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Toast.jsx): Notification feedback.
 - **Design System:** [index.css](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/index.css)
 - **Application Root:** [App.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/App.jsx), [main.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/main.jsx), [index.html](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/index.html)
 - **Configuration & CI/CD:** [vite.config.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/vite.config.js), [deploy.yml](file:///Users/krish/Desktop/K-692/FuelTracker/.github/workflows/deploy.yml)
-
