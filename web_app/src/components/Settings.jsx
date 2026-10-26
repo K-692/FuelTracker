@@ -25,6 +25,8 @@ export function Settings({
   setUnit, 
   engineOilInterval = 5000,
   setEngineOilInterval,
+  engineOilMonthsInterval = 6,
+  setEngineOilMonthsInterval,
   user, 
   onGoogleSignIn, 
   onSignOut,
@@ -56,6 +58,7 @@ export function Settings({
             entriesCount: validation.entriesCount,
             servicesCount: validation.servicesCount || 0,
             engineOilInterval: validation.engineOilInterval || 5000,
+            engineOilMonthsInterval: validation.engineOilMonthsInterval || 6,
             rawJson: text,
           });
           showNotification(`File loaded: ${file.name}. Click 'Submit & Populate Data' to restore.`, 'info');
@@ -175,35 +178,65 @@ export function Settings({
             </div>
           </div>
 
-          {/* Engine Oil Change Interval Setting */}
+          {/* Engine Oil Change Dual-Threshold Intervals Setting */}
           <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
-            <div className="form-group">
+            <div className="form-group" style={{ marginBottom: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                 <label className="form-label" style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Wrench size={14} color="var(--color-primary)" />
-                  Engine Oil Replacement Interval ({unit})
+                  Engine Oil Replacement Thresholds (Distance & Time Duration)
                 </label>
                 <span className="badge badge-primary" style={{ fontSize: '0.72rem' }}>
-                  Navbar Alert Trigger
+                  Dual Alert Trigger
                 </span>
               </div>
-              <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
-                Ideally, vehicle engine oil should be replaced every <strong>5,000 {unit}</strong>. Based on this threshold and your last logged oil service, the top navigation bar dynamically alerts you to how many kilometers remain before your next oil change.
+              <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginBottom: '14px', lineHeight: '1.5' }}>
+                Vehicle engine oil degrades both mechanically from distance driven and chemically over calendar time. Following automotive best practices, service is prompted every <strong>{engineOilInterval.toLocaleString()} {unit}</strong> or <strong>{engineOilMonthsInterval} months</strong> from your last oil change, <em>whichever comes first</em>. The navigation bar and service hub will dynamically alert you according to both criteria.
               </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', maxWidth: '320px' }}>
-                <input 
-                  type="number"
-                  min="500"
-                  step="100"
-                  className="form-input"
-                  style={{ fontWeight: 700, fontSize: '1rem' }}
-                  value={engineOilInterval}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value, 10);
-                    setEngineOilInterval(isNaN(val) || val <= 0 ? 5000 : val);
-                  }}
-                />
-                <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>{unit}</span>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    Distance Interval ({unit})
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input 
+                      type="number"
+                      min="500"
+                      step="100"
+                      className="form-input"
+                      style={{ fontWeight: 700, fontSize: '1rem' }}
+                      value={engineOilInterval}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        setEngineOilInterval(isNaN(val) || val <= 0 ? 5000 : val);
+                      }}
+                    />
+                    <span style={{ fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{unit}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    Time Duration Interval (Months)
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input 
+                      type="number"
+                      min="1"
+                      max="60"
+                      step="1"
+                      className="form-input"
+                      style={{ fontWeight: 700, fontSize: '1rem' }}
+                      value={engineOilMonthsInterval}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        setEngineOilMonthsInterval(isNaN(val) || val <= 0 ? 6 : val);
+                      }}
+                    />
+                    <span style={{ fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Months</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -12,6 +12,8 @@ import {
   Settings as SettingsIcon
 } from 'lucide-react';
 
+import { formatDate } from '../utils/dateFormatter';
+
 export function Navbar({ 
   activeTab, 
   setActiveTab, 
@@ -23,6 +25,63 @@ export function Navbar({
   oilStatus = null,
   unit = 'km'
 }) {
+  const getOilChipText = () => {
+    if (!oilStatus) return '';
+
+    const formatTime = () => {
+      if (oilStatus.remainingDays === null || oilStatus.remainingDays === undefined) return '';
+      if (oilStatus.remainingDays <= 0) {
+        return `${Math.abs(oilStatus.remainingDays)}d past`;
+      }
+      if (oilStatus.remainingDays <= 45) {
+        return `${oilStatus.remainingDays}d left`;
+      }
+      return `${oilStatus.remainingMonths}m left`;
+    };
+
+    if (oilStatus.status === 'overdue') {
+      if (oilStatus.primaryTrigger === 'both') {
+        return `Oil Overdue: ${Math.abs(oilStatus.remainingKm).toLocaleString()} ${unit} & ${Math.abs(oilStatus.remainingDays)}d`;
+      }
+      if (oilStatus.primaryTrigger === 'time') {
+        return `Oil Overdue: ${Math.abs(oilStatus.remainingDays)}d`;
+      }
+      return `Oil Overdue: ${Math.abs(oilStatus.remainingKm).toLocaleString()} ${unit}`;
+    }
+
+    if (oilStatus.status === 'warning') {
+      const kmStr = oilStatus.remainingKm > 0 ? `${oilStatus.remainingKm.toLocaleString()} ${unit}` : `0 ${unit}`;
+      const timeStr = formatTime();
+      return timeStr ? `Oil: ${kmStr} • ${timeStr}` : `Oil: ${kmStr} left`;
+    }
+
+    if (oilStatus.status === 'ok') {
+      const kmStr = `${oilStatus.remainingKm.toLocaleString()} ${unit}`;
+      const timeStr = formatTime();
+      return timeStr ? `Oil: ${kmStr} • ${timeStr}` : `Oil: ${kmStr} left`;
+    }
+
+    // No service recorded yet
+    return `Oil: ${oilStatus.intervalKm.toLocaleString()} ${unit} / ${oilStatus.intervalMonths}m`;
+  };
+
+  const getOilChipTooltip = () => {
+    if (!oilStatus) return '';
+    if (oilStatus.hasHistory) {
+      const kmText = oilStatus.remainingKm > 0 
+        ? `${oilStatus.remainingKm.toLocaleString()} ${unit} remaining`
+        : `Overdue by ${Math.abs(oilStatus.remainingKm).toLocaleString()} ${unit}`;
+      const timeText = oilStatus.remainingDays !== null && oilStatus.remainingDays !== undefined
+        ? (oilStatus.remainingDays > 0 
+            ? `${oilStatus.remainingDays} days (~${oilStatus.remainingMonths} mos) remaining`
+            : `Overdue by ${Math.abs(oilStatus.remainingDays)} days`)
+        : '';
+      const targetDateStr = oilStatus.nextDueDate ? ` or ${formatDate(oilStatus.nextDueDate)}` : '';
+      return `Engine Oil Telemetry: ${kmText}${timeText ? ` & ${timeText}` : ''} (Target: ${oilStatus.nextDueOdometer.toLocaleString()} ${unit}${targetDateStr}, whichever comes first). Last serviced on ${formatDate(oilStatus.lastOilDate)} at ${oilStatus.lastOilOdometer.toLocaleString()} ${unit}. Click to manage Services.`;
+    }
+    return `Engine Oil Telemetry: Configured interval is ${oilStatus.intervalKm.toLocaleString()} ${unit} or ${oilStatus.intervalMonths} months (Whichever comes first). Click to manage Services.`;
+  };
+
   return (
     <>
       <header className="navbar">
@@ -97,25 +156,13 @@ export function Navbar({
                 type="button"
                 className={`nav-oil-chip nav-oil-${oilStatus.status}`}
                 onClick={() => setActiveTab('services')}
-                title={
-                  oilStatus.hasHistory
-                    ? `Engine Oil Telemetry: ${
-                        oilStatus.remainingKm > 0 
-                          ? `${oilStatus.remainingKm.toLocaleString()} ${unit} left until next change` 
-                          : `Overdue by ${Math.abs(oilStatus.remainingKm).toLocaleString()} ${unit}!`
-                      } (Last change at ${oilStatus.lastOilOdometer.toLocaleString()} ${unit}). Click to manage Services.`
-                    : `Engine Oil Telemetry: ${oilStatus.remainingKm.toLocaleString()} ${unit} remaining. Click to manage Services.`
-                }
+                title={getOilChipTooltip()}
               >
                 <span className="oil-icon-dot">
                   {oilStatus.status === 'overdue' ? '🚨' : oilStatus.status === 'warning' ? '⚠️' : '🛢️'}
                 </span>
                 <span className="oil-text-display">
-                  {oilStatus.status === 'overdue' 
-                    ? `Oil Overdue: ${Math.abs(oilStatus.remainingKm).toLocaleString()} ${unit}` 
-                    : oilStatus.status === 'warning'
-                    ? `Oil: ${oilStatus.remainingKm.toLocaleString()} ${unit} left`
-                    : `Oil: ${oilStatus.remainingKm.toLocaleString()} ${unit} left`}
+                  {getOilChipText()}
                 </span>
               </button>
             )}

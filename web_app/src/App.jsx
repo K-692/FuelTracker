@@ -53,11 +53,21 @@ export default function App() {
     const saved = parseInt(localStorage.getItem('fueltracker_oil_interval') || '5000', 10);
     return isNaN(saved) || saved <= 0 ? 5000 : saved;
   });
+  const [engineOilMonthsInterval, setEngineOilMonthsIntervalState] = useState(() => {
+    const saved = parseInt(localStorage.getItem('fueltracker_oil_months_interval') || '6', 10);
+    return isNaN(saved) || saved <= 0 ? 6 : saved;
+  });
 
   const setEngineOilInterval = (val) => {
     const safeVal = Number(val) > 0 ? Number(val) : 5000;
     setEngineOilIntervalState(safeVal);
     localStorage.setItem('fueltracker_oil_interval', String(safeVal));
+  };
+
+  const setEngineOilMonthsInterval = (val) => {
+    const safeVal = Number(val) > 0 ? Number(val) : 6;
+    setEngineOilMonthsIntervalState(safeVal);
+    localStorage.setItem('fueltracker_oil_months_interval', String(safeVal));
   };
 
   // Modal dialog states
@@ -115,6 +125,9 @@ export default function App() {
       if (data.engineOilInterval) {
         setEngineOilIntervalState(data.engineOilInterval);
       }
+      if (data.engineOilMonthsInterval) {
+        setEngineOilMonthsIntervalState(data.engineOilMonthsInterval);
+      }
       setActiveVehicleId(data.activeVehicleId || (data.vehicles[0]?.id || null));
     } catch (e) {
       console.error('Failed to load application data:', e);
@@ -135,9 +148,10 @@ export default function App() {
     return ServiceCalculator.calculateEngineOilStatus(
       activeVehicleServices,
       activeVehicleFuelEntries,
-      engineOilInterval
+      engineOilInterval,
+      engineOilMonthsInterval
     );
-  }, [activeVehicleServices, activeVehicleFuelEntries, engineOilInterval, activeVehicleId]);
+  }, [activeVehicleServices, activeVehicleFuelEntries, engineOilInterval, engineOilMonthsInterval, activeVehicleId]);
 
   // Lock landing tab body to non-scrollable so all content fits inside window frame
   useEffect(() => {
@@ -344,7 +358,8 @@ export default function App() {
         fuelTypes, 
         fuelEntries, 
         services, 
-        engineOilInterval
+        engineOilInterval,
+        engineOilMonthsInterval
       );
       const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -369,6 +384,7 @@ export default function App() {
       setServices(restored.services);
       setFuelTypes(restored.fuelTypes);
       setEngineOilIntervalState(restored.engineOilInterval || 5000);
+      setEngineOilMonthsIntervalState(restored.engineOilMonthsInterval || 6);
       setActiveVehicleId(restored.activeVehicleId);
       showNotification(
         `Restored ${restored.vehicles.length} vehicle(s), ${restored.entries.length} refill(s), and ${restored.services.length} service(s)!`, 
@@ -465,6 +481,7 @@ export default function App() {
             currency={currency}
             unit={unit}
             engineOilInterval={engineOilInterval}
+            engineOilMonthsInterval={engineOilMonthsInterval}
           />
         )}
 
@@ -490,6 +507,8 @@ export default function App() {
             setUnit={setUnit}
             engineOilInterval={engineOilInterval}
             setEngineOilInterval={setEngineOilInterval}
+            engineOilMonthsInterval={engineOilMonthsInterval}
+            setEngineOilMonthsInterval={setEngineOilMonthsInterval}
             user={user}
             onGoogleSignIn={handleGoogleSignIn}
             onSignOut={handleSignOut}

@@ -31,7 +31,8 @@ export function Services({
   onOpenAddVehicle,
   currency = '₹',
   unit = 'km',
-  engineOilInterval = 5000
+  engineOilInterval = 5000,
+  engineOilMonthsInterval = 6
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCardId, setExpandedCardId] = useState(null);
@@ -47,14 +48,15 @@ export function Services({
     return (fuelEntries || []).filter(e => e.vehicleId === activeVehicleId);
   }, [fuelEntries, activeVehicleId]);
 
-  // Engine oil status for this vehicle
+  // Engine oil status for this vehicle (Dual threshold: Distance & Months)
   const oilStatus = useMemo(() => {
     return ServiceCalculator.calculateEngineOilStatus(
       vehicleServices,
       vehicleFuelEntries,
-      engineOilInterval
+      engineOilInterval,
+      engineOilMonthsInterval
     );
-  }, [vehicleServices, vehicleFuelEntries, engineOilInterval]);
+  }, [vehicleServices, vehicleFuelEntries, engineOilInterval, engineOilMonthsInterval]);
 
   // Filtered services based on search query
   const filteredServices = useMemo(() => {
@@ -153,7 +155,7 @@ export function Services({
         ))}
       </div>
 
-      {/* Engine Oil Alert & Telemetry Banner */}
+      {/* Engine Oil Alert & Dual Telemetry Banner */}
       <div 
         className="card"
         style={{
@@ -200,7 +202,7 @@ export function Services({
             </div>
 
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <h3 style={{ fontSize: '1.15rem', fontWeight: 800 }}>
                   Engine Oil Replacement Telemetry
                 </h3>
@@ -215,20 +217,29 @@ export function Services({
                   style={{ textTransform: 'uppercase', fontSize: '0.72rem', letterSpacing: '0.5px' }}
                 >
                   {oilStatus.status === 'overdue' 
-                    ? `Overdue by ${Math.abs(oilStatus.remainingKm).toLocaleString()} ${unit}` 
+                    ? (oilStatus.primaryTrigger === 'both'
+                        ? `Overdue: Distance & Time Exceeded`
+                        : oilStatus.primaryTrigger === 'time'
+                        ? `Overdue: Time Exceeded (${Math.abs(oilStatus.remainingDays)} days past)`
+                        : `Overdue by ${Math.abs(oilStatus.remainingKm).toLocaleString()} ${unit}`)
                     : oilStatus.status === 'warning' 
-                    ? `Due Soon: ${oilStatus.remainingKm.toLocaleString()} ${unit} left` 
+                    ? (oilStatus.primaryTrigger === 'both'
+                        ? `Due Soon: Distance & Time (${oilStatus.remainingKm.toLocaleString()} ${unit} • ${oilStatus.remainingDays}d)`
+                        : oilStatus.primaryTrigger === 'time'
+                        ? `Due Soon: ${oilStatus.remainingDays} days left`
+                        : `Due Soon: ${oilStatus.remainingKm.toLocaleString()} ${unit} left`)
                     : oilStatus.status === 'no_service_recorded'
-                    ? `Interval: ${oilStatus.intervalKm.toLocaleString()} ${unit}`
-                    : `Good: ${oilStatus.remainingKm.toLocaleString()} ${unit} left`}
+                    ? `Interval: ${oilStatus.intervalKm.toLocaleString()} ${unit} / ${oilStatus.intervalMonths} mos`
+                    : `Good: ${oilStatus.remainingKm.toLocaleString()} ${unit} • ${oilStatus.remainingMonths} mos left`}
                 </span>
               </div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                 {oilStatus.hasHistory ? (
                   <>
                     Last changed at <strong>{oilStatus.lastOilOdometer.toLocaleString()} {unit}</strong> on{' '}
                     <strong>{formatDate(oilStatus.lastOilDate)}</strong>. Driven{' '}
-                    <strong>{oilStatus.distanceDriven.toLocaleString()} {unit}</strong> since then.
+                    <strong>{oilStatus.distanceDriven.toLocaleString()} {unit}</strong> over{' '}
+                    <strong>{oilStatus.daysElapsed} days</strong> (~{oilStatus.monthsElapsed} mos) since last oil replacement.
                   </>
                 ) : (
                   <>
@@ -240,42 +251,105 @@ export function Services({
           </div>
 
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-              Service Target
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Service Target (Whichever first)
             </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
-              Next due: {oilStatus.nextDueOdometer.toLocaleString()} {unit}
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '2px' }}>
+              {oilStatus.nextDueOdometer.toLocaleString()} {unit}
             </div>
+            {oilStatus.nextDueDate && (
+              <div style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                Due by: {formatDate(oilStatus.nextDueDate)}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Progress Bar towards Oil Interval */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
-            <span>Oil Interval: {oilStatus.intervalKm.toLocaleString()} {unit}</span>
-            <span>{Math.round(oilStatus.percentElapsed)}% elapsed</span>
-          </div>
-          <div 
-            style={{ 
-              width: '100%', 
-              height: '8px', 
-              background: 'var(--bg-surface-elevated)', 
-              borderRadius: '999px', 
-              overflow: 'hidden' 
-            }}
-          >
+        {/* Dual Telemetry Progress Gauges: Distance & Time Duration */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)' }}>
+          {/* 1. Distance Telemetry Gauge */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px' }}>
+              <span style={{ fontWeight: 600 }}>
+                Distance Progress: {oilStatus.distanceDriven.toLocaleString()} / {oilStatus.intervalKm.toLocaleString()} {unit}
+              </span>
+              <span style={{ 
+                fontWeight: 700, 
+                color: oilStatus.isKmOverdue ? 'var(--color-danger)' : oilStatus.isKmWarning ? 'var(--color-orange)' : 'var(--text-muted)' 
+              }}>
+                {oilStatus.remainingKm > 0 
+                  ? `${oilStatus.remainingKm.toLocaleString()} ${unit} left` 
+                  : `Exceeded by ${Math.abs(oilStatus.remainingKm).toLocaleString()} ${unit}`} ({Math.round(oilStatus.percentKmElapsed)}%)
+              </span>
+            </div>
             <div 
-              style={{
-                width: `${oilStatus.percentElapsed}%`,
-                height: '100%',
-                background: oilStatus.status === 'overdue'
-                  ? 'var(--color-danger)'
-                  : oilStatus.status === 'warning'
-                  ? 'var(--color-orange)'
-                  : 'var(--color-primary)',
-                transition: 'width 0.3s ease'
+              style={{ 
+                width: '100%', 
+                height: '7px', 
+                background: 'var(--bg-surface-elevated)', 
+                borderRadius: '999px', 
+                overflow: 'hidden' 
               }}
-            />
+            >
+              <div 
+                style={{
+                  width: `${Math.min(100, Math.max(0, oilStatus.percentKmElapsed))}%`,
+                  height: '100%',
+                  background: oilStatus.isKmOverdue
+                    ? 'var(--color-danger)'
+                    : oilStatus.isKmWarning
+                    ? 'var(--color-orange)'
+                    : 'var(--color-primary)',
+                  transition: 'width 0.3s ease'
+                }}
+              />
+            </div>
+          </div>
+
+          {/* 2. Duration Telemetry Gauge */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px' }}>
+              <span style={{ fontWeight: 600 }}>
+                Duration Progress: {oilStatus.daysElapsed} / {oilStatus.totalIntervalDays || (oilStatus.intervalMonths * 30)} days ({oilStatus.intervalMonths} months)
+              </span>
+              <span style={{ 
+                fontWeight: 700, 
+                color: oilStatus.isTimeOverdue ? 'var(--color-danger)' : oilStatus.isTimeWarning ? 'var(--color-orange)' : 'var(--text-muted)' 
+              }}>
+                {oilStatus.remainingDays !== null 
+                  ? (oilStatus.remainingDays > 0 
+                      ? `${oilStatus.remainingDays} days (~${oilStatus.remainingMonths} mos) left` 
+                      : `Exceeded by ${Math.abs(oilStatus.remainingDays)} days`)
+                  : '--'} ({Math.round(oilStatus.percentTimeElapsed)}%)
+              </span>
+            </div>
+            <div 
+              style={{ 
+                width: '100%', 
+                height: '7px', 
+                background: 'var(--bg-surface-elevated)', 
+                borderRadius: '999px', 
+                overflow: 'hidden' 
+              }}
+            >
+              <div 
+                style={{
+                  width: `${Math.min(100, Math.max(0, oilStatus.percentTimeElapsed))}%`,
+                  height: '100%',
+                  background: oilStatus.isTimeOverdue
+                    ? 'var(--color-danger)'
+                    : oilStatus.isTimeWarning
+                    ? 'var(--color-orange)'
+                    : 'var(--color-primary)',
+                  transition: 'width 0.3s ease'
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span>ℹ️</span>
+            <span>Automotive Dual-Trigger Rule: Engine oil is prompted when either <strong>{oilStatus.intervalKm.toLocaleString()} {unit}</strong> or <strong>{oilStatus.intervalMonths} months</strong> is reached from the last oil change.</span>
           </div>
         </div>
       </div>
@@ -315,13 +389,13 @@ export function Services({
 
         <div className="stat-card">
           <div className="stat-header">
-            <span className="stat-label">Oil Change Interval</span>
+            <span className="stat-label">Oil Service Interval</span>
             <Clock size={18} color="var(--color-primary)" />
           </div>
           <div className="stat-value">
-            {engineOilInterval.toLocaleString()} {unit}
+            {engineOilInterval.toLocaleString()} {unit} / {engineOilMonthsInterval}m
           </div>
-          <div className="stat-subtext">Customizable in Settings</div>
+          <div className="stat-subtext">Dual-threshold • Settings</div>
         </div>
       </div>
 

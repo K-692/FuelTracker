@@ -4,7 +4,7 @@
  * and component price / frequency analytics.
  */
 
-import { SERVICE_COMPONENTS } from './serviceComponents';
+import { SERVICE_COMPONENTS } from './serviceComponents.js';
 
 export const ServiceCalculator = {
   /**
@@ -45,31 +45,100 @@ export const ServiceCalculator = {
   },
 
   /**
-   * Calculates the Engine Oil status and remaining kilometers until next service.
+   * Helper: Adds N months to a date string (YYYY-MM-DD) or Date object,
+   * properly clamping month-end dates (e.g., Aug 31 + 6 months -> Feb 28).
+   *
+   * @param {string|Date} dateInput 
+   * @param {number} months 
+   * @returns {Date|null}
+   */
+  addMonths(dateInput, months) {
+    if (!dateInput) return null;
+    let d;
+    if (typeof dateInput === 'string' && dateInput.includes('-') && dateInput.length === 10) {
+      const [y, m, day] = dateInput.split('-').map(Number);
+      d = new Date(y, m - 1, day);
+    } else {
+      d = new Date(dateInput);
+    }
+    if (isNaN(d.getTime())) return null;
+
+    const originalDay = d.getDate();
+    d.setMonth(d.getMonth() + Number(months));
+    // If date wrapped over (e.g. 31st into a month with 30 or 28 days), clamp to month-end
+    if (d.getDate() !== originalDay) {
+      d.setDate(0);
+    }
+    return d;
+  },
+
+  /**
+   * Formats a Date object to YYYY-MM-DD string.
+   *
+   * @param {Date} d 
+   * @returns {string|null}
+   */
+  formatDateISO(d) {
+    if (!d || isNaN(d.getTime())) return null;
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  },
+
+  /**
+   * Calculates the Engine Oil status and remaining telemetry until next service.
    * 
-   * Rule:
-   * Engine oil should ideally be changed every X kms (default: 5,000 km, user configurable).
+   * Automotive Dual-Threshold Rule:
+   * Engine oil should be changed every X kms (default: 5,000 km) OR every Y months
+   * (default: 6 months) from the last recorded oil change, whichever comes first.
    * 
    * @param {Array} serviceEntries - All service entries for the active vehicle
    * @param {Array} fuelEntries - All fuel entries for the active vehicle
-   * @param {number} intervalKm - Configured engine oil change interval (default 5000)
-   * @returns {Object} {
+   * @param {number} intervalKm - Configured engine oil distance interval (default 5000)
+   * @param {number} intervalMonths - Configured engine oil time interval in months (default 6)
+   * @param {Date|string} referenceDate - Reference date for calculation (defaults to current date)
+   * @returns {Object} Comprehensive telemetry metrics:
    *   hasHistory: boolean,
    *   currentOdometer: number,
    *   lastOilOdometer: number|null,
    *   lastOilDate: string|null,
-   *   distanceDriven: number,
    *   intervalKm: number,
+   *   distanceDriven: number,
    *   remainingKm: number,
    *   nextDueOdometer: number,
+   *   percentKmElapsed: number,
+   *   isKmOverdue: boolean,
+   *   isKmWarning: boolean,
+   *   intervalMonths: number,
+   *   nextDueDate: string|null,
+   *   remainingDays: number|null,
+   *   remainingMonths: number|null,
+   *   daysElapsed: number,
+   *   monthsElapsed: number,
+   *   totalIntervalDays: number,
+   *   percentTimeElapsed: number,
+   *   isTimeOverdue: boolean,
+   *   isTimeWarning: boolean,
    *   status: 'ok' | 'warning' | 'overdue' | 'no_service_recorded',
+   *   primaryTrigger: 'distance' | 'time' | 'both' | 'none',
    *   percentElapsed: number
-   * }
    */
-  calculateEngineOilStatus(serviceEntries = [], fuelEntries = [], intervalKm = 5000) {
+  calculateEngineOilStatus(
+    serviceEntries = [], 
+    fuelEntries = [], 
+    intervalKm = 5000, 
+    intervalMonths = 6, 
+    referenceDate = new Date()
+  ) {
     const currentOdo = this.getLatestOdometer(fuelEntries, serviceEntries);
     const baselineOdo = this.getBaselineOdometer(fuelEntries, serviceEntries);
-    const safeInterval = Number(intervalKm) > 0 ? Number(intervalKm) : 5000;
+    const safeIntervalKm = Number(intervalKm) > 0 ? Number(intervalKm) : 5000;
+    const safeIntervalMonths = Number(intervalMonths) > 0 ? Number(intervalMonths) : 6;
+
+    const today = new Date(referenceDate);
+    today.setHours(0, 0, 0, 0);
+    const msPerDay = 1000 * 60 * 60 * 24;
 
     // Filter service entries where Engine Oil was changed (component 'engine_oil')
     const oilServices = (serviceEntries || []).filter(s => {
@@ -79,28 +148,99 @@ export const ServiceCalculator = {
 
     if (oilServices.length === 0) {
       // No recorded engine oil service yet
-      const totalDriven = Math.max(0, currentOdo - baselineOdo);
-      const remainingKm = safeInterval - totalDriven;
-      const nextDue = (currentOdo > 0 ? currentOdo : 0) + Math.max(0, remainingKm);
+      const distanceDriven = Math.max(0, currentOdo - baselineOdo);
+      const remainingKm = safeIntervalKm - distanceDriven;
+      const nextDueOdometer = (currentOdo > 0 ? currentOdo : 0) + Math.max(0, remainingKm);
+      const percentKmElapsed = Math.min(100, Math.max(0, (distanceDriven / safeIntervalKm) * 100));
+
+      const isKmOverdue = currentOdo > 0 && distanceDriven >= safeIntervalKm;
+      const isKmWarning = currentOdo > 0 && remainingKm <= 500 && remainingKm > 0;
+
+      // Check if any baseline date exists in fuel or service entries
+      const allDates = [
+        ...(fuelEntries || []).map(e => e.refillDate),
+        ...(serviceEntries || []).map(s => s.serviceDate)
+      ].filter(Boolean).sort();
+      const baselineDate = allDates.length > 0 ? allDates[0] : null;
+
+      let nextDueDate = null;
+      let remainingDays = null;
+      let remainingMonths = null;
+      let daysElapsed = 0;
+      let monthsElapsed = 0;
+      let totalIntervalDays = safeIntervalMonths * 30;
+      let percentTimeElapsed = 0;
+      let isTimeOverdue = false;
+      let isTimeWarning = false;
+
+      if (baselineDate) {
+        const nextDueDateObj = this.addMonths(baselineDate, safeIntervalMonths);
+        if (nextDueDateObj) {
+          nextDueDate = this.formatDateISO(nextDueDateObj);
+          const targetTime = new Date(nextDueDateObj).setHours(0, 0, 0, 0);
+          const baseTime = new Date(baselineDate).setHours(0, 0, 0, 0);
+
+          remainingDays = Math.round((targetTime - today.getTime()) / msPerDay);
+          totalIntervalDays = Math.max(1, Math.round((targetTime - baseTime) / msPerDay));
+          daysElapsed = Math.max(0, totalIntervalDays - remainingDays);
+          percentTimeElapsed = Math.min(100, Math.max(0, (daysElapsed / totalIntervalDays) * 100));
+          remainingMonths = Number((remainingDays / 30.4375).toFixed(1));
+          monthsElapsed = Number((daysElapsed / 30.4375).toFixed(1));
+
+          isTimeOverdue = remainingDays <= 0;
+          isTimeWarning = remainingDays > 0 && remainingDays <= 30;
+        }
+      }
 
       let status = 'no_service_recorded';
-      if (currentOdo > 0 && totalDriven >= safeInterval) {
+      if (isKmOverdue || isTimeOverdue) {
         status = 'overdue';
-      } else if (currentOdo > 0 && remainingKm <= 500 && remainingKm > 0) {
+      } else if (isKmWarning || isTimeWarning) {
         status = 'warning';
       }
+
+      const primaryTrigger = (isKmOverdue && isTimeOverdue)
+        ? 'both'
+        : isKmOverdue
+        ? 'distance'
+        : isTimeOverdue
+        ? 'time'
+        : (isKmWarning && isTimeWarning)
+        ? 'both'
+        : isKmWarning
+        ? 'distance'
+        : isTimeWarning
+        ? 'time'
+        : 'none';
 
       return {
         hasHistory: false,
         currentOdometer: currentOdo,
         lastOilOdometer: null,
         lastOilDate: null,
-        distanceDriven: totalDriven,
-        intervalKm: safeInterval,
+        // Distance telemetry
+        intervalKm: safeIntervalKm,
+        distanceDriven,
         remainingKm,
-        nextDueOdometer: nextDue,
+        nextDueOdometer,
+        percentKmElapsed,
+        isKmOverdue,
+        isKmWarning,
+        // Time telemetry
+        intervalMonths: safeIntervalMonths,
+        nextDueDate,
+        remainingDays,
+        remainingMonths,
+        daysElapsed,
+        monthsElapsed,
+        totalIntervalDays,
+        percentTimeElapsed,
+        isTimeOverdue,
+        isTimeWarning,
+        // Combined status
         status,
-        percentElapsed: Math.min(100, Math.max(0, (totalDriven / safeInterval) * 100)),
+        primaryTrigger,
+        percentElapsed: Math.max(percentKmElapsed, percentTimeElapsed),
       };
     }
 
@@ -114,29 +254,95 @@ export const ServiceCalculator = {
 
     const latestOilService = sortedOilServices[0];
     const lastOilOdo = Number(latestOilService.odometer) || 0;
-    const distanceDriven = Math.max(0, currentOdo - lastOilOdo);
-    const remainingKm = safeInterval - distanceDriven;
-    const nextDueOdometer = lastOilOdo + safeInterval;
-    const percentElapsed = Math.min(100, Math.max(0, (distanceDriven / safeInterval) * 100));
+    const lastOilDate = latestOilService.serviceDate;
 
+    // 1. Distance Telemetry
+    const distanceDriven = Math.max(0, currentOdo - lastOilOdo);
+    const remainingKm = safeIntervalKm - distanceDriven;
+    const nextDueOdometer = lastOilOdo + safeIntervalKm;
+    const percentKmElapsed = Math.min(100, Math.max(0, (distanceDriven / safeIntervalKm) * 100));
+
+    const isKmOverdue = remainingKm <= 0;
+    const isKmWarning = remainingKm > 0 && remainingKm <= 500;
+
+    // 2. Time Telemetry (Months)
+    const nextDueDateObj = this.addMonths(lastOilDate, safeIntervalMonths);
+    const nextDueDate = nextDueDateObj ? this.formatDateISO(nextDueDateObj) : null;
+    
+    let remainingDays = null;
+    let remainingMonths = null;
+    let daysElapsed = 0;
+    let monthsElapsed = 0;
+    let totalIntervalDays = safeIntervalMonths * 30;
+    let percentTimeElapsed = 0;
+    let isTimeOverdue = false;
+    let isTimeWarning = false;
+
+    if (nextDueDateObj) {
+      const targetTime = new Date(nextDueDateObj).setHours(0, 0, 0, 0);
+      const lastOilTime = new Date(lastOilDate).setHours(0, 0, 0, 0);
+
+      remainingDays = Math.round((targetTime - today.getTime()) / msPerDay);
+      totalIntervalDays = Math.max(1, Math.round((targetTime - lastOilTime) / msPerDay));
+      daysElapsed = Math.max(0, totalIntervalDays - remainingDays);
+      percentTimeElapsed = Math.min(100, Math.max(0, (daysElapsed / totalIntervalDays) * 100));
+      remainingMonths = Number((remainingDays / 30.4375).toFixed(1));
+      monthsElapsed = Number((daysElapsed / 30.4375).toFixed(1));
+
+      isTimeOverdue = remainingDays <= 0;
+      isTimeWarning = remainingDays > 0 && remainingDays <= 30; // within 30 days
+    }
+
+    // 3. Combined Status Evaluation (Whichever comes first)
     let status = 'ok';
-    if (remainingKm <= 0) {
+    if (isKmOverdue || isTimeOverdue) {
       status = 'overdue';
-    } else if (remainingKm <= 500) {
+    } else if (isKmWarning || isTimeWarning) {
       status = 'warning';
     }
+
+    const primaryTrigger = (isKmOverdue && isTimeOverdue)
+      ? 'both'
+      : isKmOverdue
+      ? 'distance'
+      : isTimeOverdue
+      ? 'time'
+      : (isKmWarning && isTimeWarning)
+      ? 'both'
+      : isKmWarning
+      ? 'distance'
+      : isTimeWarning
+      ? 'time'
+      : 'none';
 
     return {
       hasHistory: true,
       currentOdometer: currentOdo,
       lastOilOdometer: lastOilOdo,
-      lastOilDate: latestOilService.serviceDate,
+      lastOilDate,
+      // Distance telemetry
+      intervalKm: safeIntervalKm,
       distanceDriven,
-      intervalKm: safeInterval,
       remainingKm,
       nextDueOdometer,
+      percentKmElapsed,
+      isKmOverdue,
+      isKmWarning,
+      // Time telemetry
+      intervalMonths: safeIntervalMonths,
+      nextDueDate,
+      remainingDays,
+      remainingMonths,
+      daysElapsed,
+      monthsElapsed,
+      totalIntervalDays,
+      percentTimeElapsed,
+      isTimeOverdue,
+      isTimeWarning,
+      // Combined evaluation
       status,
-      percentElapsed,
+      primaryTrigger,
+      percentElapsed: Math.max(percentKmElapsed, percentTimeElapsed),
     };
   },
 

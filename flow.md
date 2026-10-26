@@ -29,14 +29,14 @@
     3. `Refills`: Chronological refill logs with fuel type filters, search, and live preview editing.
     4. `Services` (New): Complete vehicle-wise maintenance tracking across 60 mechanical, fluid, and electrical components, individual component charges, user-inserted final bills, and full historical editability.
     5. `Analytics`: High-contrast SVG line and bar charts for fuel efficiency, refill expenses, component servicing count plots, and component price trajectory over time.
-    6. `Settings`: Theme switcher, localization preferences, customizable Engine Oil Service Interval, Firebase keys setup, and JSON backup/restore.
+    6. `Settings`: Theme switcher, localization preferences, customizable Engine Oil Service Dual Intervals (distance in km and time duration in months), Firebase keys setup, and JSON backup/restore.
 - **Engine Oil Alert System in Navbar:**
-  - Real-time status chip placed in the navigation bar displaying exact remaining distance before the next scheduled engine oil change.
+  - Real-time status chip placed in the navigation bar displaying exact remaining distance and remaining calendar duration before the next scheduled engine oil change based on an automotive "whichever comes first" model.
   - Status color coding:
-    - 🛢️ `Normal`: Green chip when remaining distance is safe (> 500 km).
-    - ⚠️ `Warning`: Amber chip when within 500 km of target.
-    - 🚨 `Overdue`: Pulsing danger red alert when distance driven exceeds the threshold.
-  - Interactive click navigation directly routing to the Services hub.
+    - 🛢️ `Normal`: Green chip when both remaining distance (> 500 km) and duration (> 30 days) are safe.
+    - ⚠️ `Warning`: Amber chip when either remaining distance is within 500 km or duration is within 30 days.
+    - 🚨 `Overdue`: Pulsing danger red alert when distance driven exceeds the limit OR duration exceeds the month threshold.
+  - Interactive click navigation directly routing to the Services hub with dual telemetry countdown.
 - **Backend & Cloud Database:** Firebase v10/v11 SDK connected to `ultimatefueltracker`:
   - **Google Authentication:** OAuth popup flow with session persistence (`firebase/auth`).
   - **Cloud Firestore:** Remote database collections `users/{userId}/vehicles`, `users/{userId}/fuel_entries`, `users/{userId}/services`, and `users/{userId}/fuel_types`.
@@ -57,24 +57,37 @@ $$\text{Mileage (km/L)} = \frac{\text{Current Odometer} - \text{Previous Odomete
 $$\text{Price per Liter} = \frac{\text{Total Cost}}{\text{Fuel Volume}}$$
 $$\text{Operating Cost per Distance Unit} = \frac{\text{Total Cost}}{\text{Current Odometer} - \text{Previous Odometer}}$$
 
-#### 3. Engine Oil Replacement Telemetry Formulation
+#### 3. Dual-Threshold Engine Oil Replacement Telemetry Formulation
+Engine oil degradation is driven by two independent physical phenomena: mechanical shear/particulate contamination proportional to distance driven, and thermal oxidation/acidification/condensation over calendar duration.
+
 Let:
 - $O_{\text{latest}} = \max(\{O_{\text{fuel}}\} \cup \{O_{\text{service}}\})$ be the vehicle's current maximum odometer reading.
 - $O_{\text{oil\_last}}$ be the odometer recorded at the most recent service where Engine Oil was replaced.
-- $I_{\text{oil}}$ be the configured service interval (default: $5,000\text{ km}$, configurable in Settings).
+- $T_{\text{oil\_last}}$ be the timestamp recorded at that most recent oil service.
+- $I_{\text{oil\_km}}$ be the configured service distance interval (default: $5,000\text{ km}$, configurable in Settings).
+- $I_{\text{oil\_months}}$ be the configured service duration interval (default: $6\text{ months}$, configurable in Settings).
+- $T_{\text{today}}$ be the current date.
 
-The distance driven since the last oil change is:
+**Distance Dimension:**
 $$\Delta O_{\text{oil}} = O_{\text{latest}} - O_{\text{oil\_last}}$$
+$$O_{\text{remaining}} = I_{\text{oil\_km}} - \Delta O_{\text{oil}}$$
+$$\text{Percent}_{\text{km}} = \min\left(100, \max\left(0, \frac{\Delta O_{\text{oil}}}{I_{\text{oil\_km}}} \times 100\right)\right)$$
 
-The remaining distance until the next scheduled replacement is:
-$$O_{\text{remaining}} = I_{\text{oil}} - \Delta O_{\text{oil}}$$
+**Time Duration Dimension:**
+$$T_{\text{due}} = \text{AddMonths}(T_{\text{oil\_last}}, I_{\text{oil\_months}})$$
+$$D_{\text{remaining}} = \left\lfloor\frac{T_{\text{due}} - T_{\text{today}}}{86,400,000\text{ ms}}\right\rfloor$$
+$$D_{\text{total}} = \max\left(1, \left\lfloor\frac{T_{\text{due}} - T_{\text{oil\_last}}}{86,400,000\text{ ms}}\right\rfloor\right)$$
+$$D_{\text{elapsed}} = \max(0, D_{\text{total}} - D_{\text{remaining}})$$
+$$\text{Percent}_{\text{time}} = \min\left(100, \max\left(0, \frac{D_{\text{elapsed}}}{D_{\text{total}}} \times 100\right)\right)$$
 
-The status indicator evaluates according to the piecewise condition:
+**Automotive "Whichever Comes First" Evaluator:**
 $$\text{Status} = \begin{cases} 
-\text{OVERDUE (🚨)} & \text{if } O_{\text{remaining}} \le 0 \\
-\text{WARNING (⚠️)} & \text{if } 0 < O_{\text{remaining}} \le 500 \\
-\text{OK (🛢️)} & \text{if } O_{\text{remaining}} > 500 
+\text{OVERDUE (🚨)} & \text{if } O_{\text{remaining}} \le 0 \;\lor\; D_{\text{remaining}} \le 0 \\
+\text{WARNING (⚠️)} & \text{if } (0 < O_{\text{remaining}} \le 500) \;\lor\; (0 < D_{\text{remaining}} \le 30) \\
+\text{OK (🛢️)} & \text{otherwise} 
 \end{cases}$$
+
+$$\text{Overall Percent Elapsed} = \max(\text{Percent}_{\text{km}}, \text{Percent}_{\text{time}})$$
 
 #### 4. Component-Level Price Trajectory & Servicing Frequency
 - **Component Frequency:** Sum of servicing occurrences $\sum \mathbb{I}(\text{component}_i = \text{Yes})$ for vehicle $V$.
@@ -210,6 +223,23 @@ $$\text{Status} = \begin{cases}
   - **Right column (`1fr`):** `.nav-actions` aligned with `justify-self: end`.
 - Standardized vertical height to 36px across all interactive navbar elements (`.nav-item`, `.nav-oil-chip`, `.btn-icon-only`, `.btn-nav-auth`, and user avatar) with `display: inline-flex; align-items: center; justify-content: center; line-height: 1;`.
 - Refined responsive breakpoints (`@media (max-width: 900px)`) to cleanly transition desktop tabs into the bottom navigation bar and safeguard medium desktop widths (901px-1180px) with adaptive padding and font sizing.
+
+### Phase 12: Dual-Threshold Engine Oil Telemetry (Distance & Time Duration Lifecycle)
+- **Mathematical Date Arithmetic & Month-End Handling:**
+  - Extended [serviceCalculator.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/domain/serviceCalculator.js) with robust month addition (`addMonths`) handling month-end calendar wrapping (e.g. August 31 + 6 months -> February 28/29).
+  - Formulated the automotive standard dual-criterion piecewise function: an engine oil service is prompted when *either* the distance threshold (default: $5,000\text{ km}$) or the calendar time duration threshold (default: $6\text{ months}$) from the last recorded oil change is reached.
+  - Computed dual progression telemetry: $\text{Percent}_{\text{km}}$ vs $\text{Percent}_{\text{time}}$, days elapsed, days remaining, remaining months, target due date, and explicit trigger classification (`both`, `distance`, `time`, or `none`).
+- **Configurable Settings with Zero-Data Mutation Guard:**
+  - Added customizable "Time Duration Interval (Months)" input (default: 6 months) alongside "Distance Interval" in [Settings.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Settings.jsx).
+  - Hardened [storage.js](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/services/storage.js) to initialize and read `fueltracker_oil_months_interval` without mutating, clearing, or modifying any existing user vehicles, fuel logs, service records, or user account attributes.
+  - Updated JSON backup export/validation/import roundtrip to persist `engineOilMonthsInterval` with backward-compatible defaults.
+- **Top Navigation Bar Dual Telemetry Display:**
+  - Enhanced [Navbar.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Navbar.jsx) oil chip to render real-time dual countdown metrics (e.g. `Oil: 4,000 km • 4.9m left` or `Oil Overdue: 200 km & 15d`) with dynamic iconography and status tooltips.
+- **Maintenance Hub Dual Progress Gauges:**
+  - Redesigned the Engine Oil Telemetry card in [Services.jsx](file:///Users/krish/Desktop/K-692/FuelTracker/web_app/src/components/Services.jsx) with two dedicated visual telemetry tracks:
+    1. **Distance Progress Track:** Driven kilometers out of the interval threshold, remaining distance, and percentage completion.
+    2. **Duration Progress Track:** Elapsed calendar days/months out of the duration threshold, remaining days/months, target due date, and percentage completion.
+  - Updated the quick-stat interval metric card to display dual thresholds (e.g. `5,000 km / 6m`).
 
 ---
 

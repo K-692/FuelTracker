@@ -30,6 +30,7 @@ const STORAGE_KEYS = {
   PREFERENCES: 'fueltracker_preferences',
   ACTIVE_VEHICLE: 'fueltracker_active_vehicle_id',
   OIL_INTERVAL: 'fueltracker_oil_interval',
+  OIL_MONTHS_INTERVAL: 'fueltracker_oil_months_interval',
 };
 
 export const StorageService = {
@@ -52,18 +53,24 @@ export const StorageService = {
     if (!localStorage.getItem(STORAGE_KEYS.OIL_INTERVAL)) {
       localStorage.setItem(STORAGE_KEYS.OIL_INTERVAL, '5000');
     }
+    if (!localStorage.getItem(STORAGE_KEYS.OIL_MONTHS_INTERVAL)) {
+      localStorage.setItem(STORAGE_KEYS.OIL_MONTHS_INTERVAL, '6');
+    }
   },
 
   /**
    * Loads all application data for the current session.
    * @param {Object|null} user - Firebase User object if signed in.
-   * @returns {Promise<{ vehicles: Array, entries: Array, services: Array, fuelTypes: Array, activeVehicleId: string|null, engineOilInterval: number }>}
+   * @returns {Promise<{ vehicles: Array, entries: Array, services: Array, fuelTypes: Array, activeVehicleId: string|null, engineOilInterval: number, engineOilMonthsInterval: number }>}
    */
   async loadData(user) {
     this.initLocalStorage();
 
     const storedInterval = parseInt(localStorage.getItem(STORAGE_KEYS.OIL_INTERVAL) || '5000', 10);
     const engineOilInterval = isNaN(storedInterval) || storedInterval <= 0 ? 5000 : storedInterval;
+
+    const storedMonths = parseInt(localStorage.getItem(STORAGE_KEYS.OIL_MONTHS_INTERVAL) || '6', 10);
+    const engineOilMonthsInterval = isNaN(storedMonths) || storedMonths <= 0 ? 6 : storedMonths;
 
     if (user && isFirebaseConfigured()) {
       try {
@@ -104,6 +111,7 @@ export const StorageService = {
             fuelTypes: fuelTypes.length > 0 ? fuelTypes : DEFAULT_FUEL_TYPES,
             activeVehicleId: activeId,
             engineOilInterval,
+            engineOilMonthsInterval,
           };
         }
       } catch (err) {
@@ -120,6 +128,7 @@ export const StorageService = {
       fuelTypes: this.getLocalFuelTypes(),
       activeVehicleId: localStorage.getItem(STORAGE_KEYS.ACTIVE_VEHICLE) || (localVehicles[0]?.id || null),
       engineOilInterval,
+      engineOilMonthsInterval,
     };
   },
 
@@ -405,12 +414,20 @@ export const StorageService = {
   /**
    * Generates a comprehensive JSON backup string.
    */
-  exportBackup(vehicles = [], fuelTypes = DEFAULT_FUEL_TYPES, fuelEntries = [], services = [], engineOilInterval = 5000) {
+  exportBackup(
+    vehicles = [], 
+    fuelTypes = DEFAULT_FUEL_TYPES, 
+    fuelEntries = [], 
+    services = [], 
+    engineOilInterval = 5000,
+    engineOilMonthsInterval = 6
+  ) {
     const backupObj = {
       appName: 'FuelTracker',
       version: 2,
       exportedAt: new Date().toISOString(),
       engineOilInterval: Number(engineOilInterval) || 5000,
+      engineOilMonthsInterval: Number(engineOilMonthsInterval) || 6,
       vehicles: vehicles.map((v, idx) => ({
         id: String(v.id || `veh_${idx + 1}`),
         name: v.name || 'Vehicle',
@@ -489,6 +506,7 @@ export const StorageService = {
       servicesCount: services.length,
       fuelTypesCount: fuelTypes.length,
       engineOilInterval: parsed.engineOilInterval || 5000,
+      engineOilMonthsInterval: parsed.engineOilMonthsInterval || 6,
       appName: parsed.appName || 'FuelTracker',
       exportedAt: parsed.exportedAt || null,
       parsedData: parsed,
@@ -576,7 +594,9 @@ export const StorageService = {
     });
 
     const engineOilInterval = Number(parsedData.engineOilInterval) || 5000;
+    const engineOilMonthsInterval = Number(parsedData.engineOilMonthsInterval) || 6;
     localStorage.setItem(STORAGE_KEYS.OIL_INTERVAL, String(engineOilInterval));
+    localStorage.setItem(STORAGE_KEYS.OIL_MONTHS_INTERVAL, String(engineOilMonthsInterval));
 
     // Save to local storage
     localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify(importedVehicles));
@@ -605,6 +625,7 @@ export const StorageService = {
       fuelTypes: importedFuelTypes,
       activeVehicleId: importedVehicles[0]?.id || null,
       engineOilInterval,
+      engineOilMonthsInterval,
     };
   }
 };
