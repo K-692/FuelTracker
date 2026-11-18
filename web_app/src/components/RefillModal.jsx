@@ -104,7 +104,7 @@ export function RefillModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Calculator size={20} color="var(--color-green)" />
@@ -195,7 +195,7 @@ export function RefillModal({
           </div>
 
           {/* Fuel Amount & Total Cost */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div className="form-grid-2">
             <div className="form-group">
               <label className="form-label">Volume (Liters)</label>
               <input 

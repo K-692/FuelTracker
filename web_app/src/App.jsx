@@ -98,7 +98,10 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
     const meta = document.querySelector('meta[name="color-scheme"]');
     if (meta) meta.content = theme;
-    localStorage.setItem('fueltracker_theme', theme);
+    document.querySelectorAll('meta[name="theme-color"]').forEach(m => {
+      m.setAttribute('content', theme === 'dark' ? '#0c1322' : '#f8fafc');
+    });
+    try { localStorage.setItem('fueltracker_theme', theme); } catch { /* storage unavailable */ }
   }, [theme]);
 
   // Persist currency and unit preferences
@@ -153,20 +156,33 @@ export default function App() {
     );
   }, [activeVehicleServices, activeVehicleFuelEntries, engineOilInterval, engineOilMonthsInterval, activeVehicleId]);
 
-  // Lock landing tab body to non-scrollable so all content fits inside window frame
+  // While any modal is open: lock background scroll (prevents iOS/Android scroll bleed)
+  // and allow the Escape key to close the top-most dialog.
+  const anyModalOpen =
+    isRefillModalOpen || isServiceModalOpen || isVehicleModalOpen || isFirebaseModalOpen || confirmDialog.isOpen;
+
   useEffect(() => {
-    if (currentTab === 'landing') {
-      document.body.style.overflow = 'hidden';
-      document.documentElement.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-      document.documentElement.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-      document.documentElement.style.overflow = '';
+    if (!anyModalOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.body.classList.add('modal-open');
+
+    const onKeyDown = (e) => {
+      if (e.key !== 'Escape') return;
+      if (confirmDialog.isOpen) setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+      else if (isFirebaseModalOpen) setIsFirebaseModalOpen(false);
+      else if (isServiceModalOpen) setIsServiceModalOpen(false);
+      else if (isRefillModalOpen) setIsRefillModalOpen(false);
+      else if (isVehicleModalOpen) setIsVehicleModalOpen(false);
     };
-  }, [currentTab]);
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.classList.remove('modal-open');
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [anyModalOpen, confirmDialog.isOpen, isFirebaseModalOpen, isServiceModalOpen, isRefillModalOpen, isVehicleModalOpen]);
 
   // Auth Subscription
   useEffect(() => {

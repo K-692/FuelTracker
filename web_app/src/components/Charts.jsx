@@ -1,5 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import { formatDate } from '../utils/dateFormatter';
+
+/**
+ * Measures the rendered width of a container so SVG charts can use a viewBox
+ * that matches real pixels — keeping labels legible on phones and crisp on desktops.
+ */
+function useMeasuredWidth(fallback = 600) {
+  const ref = useRef(null);
+  const [width, setWidth] = useState(fallback);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const update = () => {
+      const w = el.getBoundingClientRect().width;
+      if (w > 0) setWidth(Math.round(w));
+    };
+    update();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', update);
+      return () => window.removeEventListener('resize', update);
+    }
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return [ref, width];
+}
 
 /**
  * LineChart: SVG-based smooth line chart with gradient fill and interactive tooltips.
@@ -15,6 +43,8 @@ export function LineChart({
   emptyMessage = 'No data points recorded yet' 
 }) {
   const [hoveredPoint, setHoveredPoint] = useState(null);
+  const [wrapRef, measuredWidth] = useMeasuredWidth(600);
+  const reactId = useId();
 
   if (!data || data.length === 0) {
     return (
@@ -42,8 +72,8 @@ export function LineChart({
   const maxVal = Math.max(...values) * 1.15;
   const range = maxVal - minVal || 1;
 
-  const width = 600;
-  const paddingX = 40;
+  const width = Math.max(260, measuredWidth);
+  const paddingX = width < 420 ? 30 : 40;
   const paddingY = 30;
   const chartWidth = width - paddingX * 2;
   const chartHeight = height - paddingY * 2;
@@ -62,10 +92,10 @@ export function LineChart({
     avgY = height - paddingY - ((average - minVal) / range) * chartHeight;
   }
 
-  const gradientId = `grad_${color.replace('#', '')}_${Math.floor(Math.random() * 1000)}`;
+  const gradientId = `grad_${color.replace('#', '')}_${reactId.replace(/:/g, '')}`;
 
   return (
-    <div style={{ position: 'relative', width: '100%', userSelect: 'none' }}>
+    <div ref={wrapRef} style={{ position: 'relative', width: '100%', userSelect: 'none', WebkitUserSelect: 'none' }}>
       <svg 
         viewBox={`0 0 ${width} ${height}`} 
         style={{ width: '100%', height: 'auto', overflow: 'visible' }}
@@ -117,11 +147,12 @@ export function LineChart({
               strokeWidth="1.5"
             />
             <text 
-              x={width - paddingX + 6} 
-              y={avgY + 3} 
-              fill="var(--text-dim)" 
-              fontSize="9"
+              x={width - paddingX} 
+              y={avgY - 5} 
+              fill="var(--text-muted)" 
+              fontSize="10"
               fontWeight="600"
+              textAnchor="end"
             >
               Avg: {average} {unit}
             </text>
@@ -151,6 +182,7 @@ export function LineChart({
             style={{ cursor: 'pointer', transition: 'r 0.15s ease' }}
             onMouseEnter={() => setHoveredPoint(p)}
             onMouseLeave={() => setHoveredPoint(null)}
+            onClick={() => setHoveredPoint(prev => (prev?.idx === p.idx ? null : p))}
           />
         ))}
 
@@ -184,7 +216,7 @@ export function LineChart({
         <div 
           style={{
             position: 'absolute',
-            left: `${(hoveredPoint.x / width) * 100}%`,
+            left: `${Math.min(85, Math.max(15, (hoveredPoint.x / width) * 100))}%`,
             top: `${(hoveredPoint.y / height) * 100}%`,
             transform: 'translate(-50%, -120%)',
             background: 'var(--bg-surface-elevated)',
@@ -223,6 +255,7 @@ export function BarChart({
   height = 220 
 }) {
   const [hoveredBar, setHoveredBar] = useState(null);
+  const [wrapRef, measuredWidth] = useMeasuredWidth(600);
 
   if (!data || data.length === 0) {
     return (
@@ -235,8 +268,8 @@ export function BarChart({
   const values = data.map(d => Number(d[valueKey]) || 0);
   const maxVal = Math.max(...values, 1) * 1.1;
 
-  const width = 600;
-  const paddingX = 35;
+  const width = Math.max(260, measuredWidth);
+  const paddingX = width < 420 ? 16 : 35;
   const paddingY = 25;
   const chartWidth = width - paddingX * 2;
   const chartHeight = height - paddingY * 2;
@@ -244,7 +277,7 @@ export function BarChart({
   const barWidth = Math.min(30, (chartWidth / data.length) * 0.7);
 
   return (
-    <div style={{ position: 'relative', width: '100%', userSelect: 'none' }}>
+    <div ref={wrapRef} style={{ position: 'relative', width: '100%', userSelect: 'none', WebkitUserSelect: 'none' }}>
       <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto' }}>
         <line 
           x1={paddingX} 
@@ -272,6 +305,7 @@ export function BarChart({
               style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
               onMouseEnter={() => setHoveredBar(idx)}
               onMouseLeave={() => setHoveredBar(null)}
+              onClick={() => setHoveredBar(prev => (prev === idx ? null : idx))}
             />
           );
         })}

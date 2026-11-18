@@ -49,7 +49,7 @@ export function Dashboard({
       {/* Top Header: Active Vehicle Quick Selector */}
       <div className="dashboard-header">
         <div>
-          <h1 style={{ fontSize: '1.65rem', fontWeight: 800, marginBottom: '2px' }}>
+          <h1 className="page-title">
             Hi, {username}!
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
@@ -354,10 +354,10 @@ export function Dashboard({
           </div>
 
           <div className="entries-table-wrapper">
-            <table className="entries-table">
+            <table className="entries-table responsive-table">
               <thead>
                 <tr>
-                  <th>Date (DD/MMM/YYYY)</th>
+                  <th>Date</th>
                   <th>Odometer</th>
                   <th>Trip Delta</th>
                   <th>Fuel Liters</th>
@@ -369,21 +369,21 @@ export function Dashboard({
               <tbody>
                 {recentEntries.map(entry => (
                   <tr key={entry.id}>
-                    <td>
+                    <td data-label="Date" className="cell-primary">
                       <strong>{formatDate(entry.refillDate)}</strong>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{entry.fuelTypeName}</div>
                     </td>
-                    <td>{entry.odometer} {unit}</td>
-                    <td>
+                    <td data-label="Odometer">{entry.odometer} {unit}</td>
+                    <td data-label="Trip">
                       {entry.tripDistance ? (
                         <span style={{ color: 'var(--color-green)', fontWeight: 600 }}>+{entry.tripDistance} {unit}</span>
                       ) : (
                         <span style={{ color: 'var(--text-dim)' }}>-- (Base)</span>
                       )}
                     </td>
-                    <td>{entry.fuelAmount} L</td>
-                    <td>{currency}{entry.totalCost}</td>
-                    <td>
+                    <td data-label="Fuel">{entry.fuelAmount} L</td>
+                    <td data-label="Cost">{currency}{entry.totalCost}</td>
+                    <td data-label="Mileage">
                       {entry.calculatedMileage ? (
                         <span className="badge badge-primary">
                           {entry.calculatedMileage.toFixed(2)} {unit}/L
@@ -392,12 +392,12 @@ export function Dashboard({
                         <span className="badge badge-amber">Baseline</span>
                       )}
                     </td>
-                    <td style={{ textAlign: 'center' }}>
+                    <td className="cell-action" style={{ textAlign: 'center' }}>
                       <button 
-                        className="btn-icon-only" 
+                        className="btn-icon-only btn-icon-sm" 
                         onClick={() => onEditRefill(entry)}
                         title="Edit this refill"
-                        style={{ width: '28px', height: '28px' }}
+                        aria-label={`Edit refill from ${formatDate(entry.refillDate)}`}
                       >
                         <Edit3 size={13} />
                       </button>

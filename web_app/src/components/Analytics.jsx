@@ -100,7 +100,7 @@ export function Analytics({
       {/* Header */}
       <div className="dashboard-header" style={{ marginBottom: '18px' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '4px' }}>
+          <h1 className="page-title">
             Vehicle Telemetry & Analytics
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
@@ -110,6 +110,8 @@ export function Analytics({
 
         {/* View Switcher: Fuel vs Services */}
         <div 
+          className="segmented"
+          role="tablist"
           style={{ 
             display: 'flex', 
             background: 'var(--bg-surface-elevated)', 
@@ -121,6 +123,8 @@ export function Analytics({
         >
           <button
             className={`btn ${analyticsView === 'fuel' ? 'btn-primary' : 'btn-ghost'}`}
+            role="tab"
+            aria-selected={analyticsView === 'fuel'}
             style={{ 
               padding: '6px 14px', 
               fontSize: '0.84rem', 
@@ -134,6 +138,8 @@ export function Analytics({
           </button>
           <button
             className={`btn ${analyticsView === 'services' ? 'btn-primary' : 'btn-ghost'}`}
+            role="tab"
+            aria-selected={analyticsView === 'services'}
             style={{ 
               padding: '6px 14px', 
               fontSize: '0.84rem', 
@@ -166,7 +172,7 @@ export function Analytics({
         <>
           {/* Time Period Filter Pills */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-            <div style={{ display: 'flex', gap: '6px', background: 'var(--bg-surface-elevated)', padding: '4px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+            <div className="segmented" style={{ display: 'flex', gap: '6px', background: 'var(--bg-surface-elevated)', padding: '4px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
               {['ALL', '1Y', '90D', '30D'].map(period => (
                 <button
                   key={period}
@@ -278,7 +284,7 @@ export function Analytics({
               </div>
 
               {/* Chart 2: Fuel Expenditure per Refill */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '20px', marginBottom: '24px' }}>
                 <div className="card">
                   <div style={{ marginBottom: '14px' }}>
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Refill Expenditure ({currency})</h3>
@@ -427,7 +433,7 @@ export function Analytics({
                     </label>
                     <select
                       className="form-select"
-                      style={{ fontSize: '0.88rem', padding: '6px 12px', minWidth: '200px' }}
+                      style={{ fontSize: '0.88rem', padding: '6px 12px', minWidth: 0, maxWidth: '100%' }}
                       value={activeSelectedComponentId}
                       onChange={(e) => setSelectedComponentId(e.target.value)}
                     >

@@ -110,7 +110,7 @@ export function FirebaseModal({ isOpen, onClose, onConfigSaved }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" style={{ maxWidth: '620px' }} onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" className="modal-content" style={{ maxWidth: '620px' }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Database size={22} color="var(--color-primary)" />
@@ -209,7 +209,7 @@ export function FirebaseModal({ isOpen, onClose, onConfigSaved }) {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="form-grid-2">
                 <div className="form-group">
                   <label className="form-label">Project ID (projectId) *</label>
                   <input 
@@ -234,7 +234,7 @@ export function FirebaseModal({ isOpen, onClose, onConfigSaved }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="form-grid-2">
                 <div className="form-group">
                   <label className="form-label">Storage Bucket</label>
                   <input 

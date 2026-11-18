@@ -82,67 +82,63 @@ export function Navbar({
     return `Engine Oil Telemetry: Configured interval is ${oilStatus.intervalKm.toLocaleString()} ${unit} or ${oilStatus.intervalMonths} months (Whichever comes first). Click to manage Services.`;
   };
 
+  const getOilChipShortText = () => {
+    if (!oilStatus) return '';
+    if (oilStatus.status === 'overdue') return 'Oil due';
+    if (oilStatus.status === 'warning' || oilStatus.status === 'ok') {
+      const km = Math.max(0, oilStatus.remainingKm || 0);
+      return km >= 1000 ? `${(km / 1000).toFixed(km >= 10000 ? 0 : 1)}k ${unit}` : `${km} ${unit}`;
+    }
+    return 'Oil';
+  };
+
+  const navItems = [
+    { id: 'track', label: 'Track', Icon: Gauge },
+    { id: 'garage', label: 'Garage', Icon: Car },
+    { id: 'refills', label: 'Refills', Icon: Clock },
+    { id: 'services', label: 'Services', Icon: Wrench },
+    { id: 'analytics', label: 'Analytics', Icon: ChartIcon },
+    { id: 'settings', label: 'Settings', Icon: SettingsIcon },
+  ];
+
+  const handleNavigate = (tabId) => {
+    setActiveTab(tabId);
+    if (typeof window !== 'undefined') window.scrollTo(0, 0);
+  };
+
   return (
     <>
-      <header className="navbar">
+      <header className={`navbar ${user ? 'navbar--authed' : ''}`}>
         <div className="navbar-inner">
           {/* Brand Logo */}
-          <div 
-            className="brand-logo" 
-            onClick={() => setActiveTab(user ? 'track' : 'landing')}
+          <button
+            type="button"
+            className="brand-logo"
+            onClick={() => handleNavigate(user ? 'track' : 'landing')}
             title="FuelTracker Home"
+            aria-label="FuelTracker home"
           >
-            <img src="./icon.png" alt="FuelTracker" className="brand-icon-img" />
-            <div>
+            <img src="./icon.png" alt="" className="brand-icon-img" width="34" height="34" />
+            <span className="brand-text">
               Fuel<span className="brand-highlight">Tracker</span>
-            </div>
-          </div>
+            </span>
+          </button>
 
           {/* Navigation Links: ONLY shown when user is signed in */}
           {user ? (
-            <nav className="nav-links desktop-only">
-              <button 
-                className={`nav-item ${activeTab === 'track' ? 'active' : ''}`}
-                onClick={() => setActiveTab('track')}
-              >
-                <Gauge size={16} />
-                Track
-              </button>
-              <button 
-                className={`nav-item ${activeTab === 'garage' ? 'active' : ''}`}
-                onClick={() => setActiveTab('garage')}
-              >
-                <Car size={16} />
-                Garage
-              </button>
-              <button 
-                className={`nav-item ${activeTab === 'refills' ? 'active' : ''}`}
-                onClick={() => setActiveTab('refills')}
-              >
-                <Clock size={16} />
-                Refills
-              </button>
-              <button 
-                className={`nav-item ${activeTab === 'services' ? 'active' : ''}`}
-                onClick={() => setActiveTab('services')}
-              >
-                <Wrench size={16} />
-                Services
-              </button>
-              <button 
-                className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
-                onClick={() => setActiveTab('analytics')}
-              >
-                <ChartIcon size={16} />
-                Analytics
-              </button>
-              <button 
-                className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-                onClick={() => setActiveTab('settings')}
-              >
-                <SettingsIcon size={16} />
-                Settings
-              </button>
+            <nav className="nav-links desktop-only" aria-label="Primary">
+              {navItems.map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`nav-item ${activeTab === id ? 'active' : ''}`}
+                  aria-current={activeTab === id ? 'page' : undefined}
+                  onClick={() => handleNavigate(id)}
+                >
+                  <Icon size={16} aria-hidden="true" />
+                  {label}
+                </button>
+              ))}
             </nav>
           ) : (
             <div className="nav-spacer desktop-only" />
@@ -150,67 +146,64 @@ export function Navbar({
 
           {/* Action controls (Engine Oil Alert + Theme switch + Google Auth) */}
           <div className="nav-actions">
-            {/* Engine Oil Status Alert Chip in the Navigation Bar */}
             {user && oilStatus && (
               <button
                 type="button"
                 className={`nav-oil-chip nav-oil-${oilStatus.status}`}
-                onClick={() => setActiveTab('services')}
+                onClick={() => handleNavigate('services')}
                 title={getOilChipTooltip()}
+                aria-label={getOilChipTooltip()}
               >
-                <span className="oil-icon-dot">
+                <span className="oil-icon-dot" aria-hidden="true">
                   {oilStatus.status === 'overdue' ? '🚨' : oilStatus.status === 'warning' ? '⚠️' : '🛢️'}
                 </span>
-                <span className="oil-text-display">
-                  {getOilChipText()}
-                </span>
+                <span className="oil-text-display oil-text-full">{getOilChipText()}</span>
+                <span className="oil-text-display oil-text-short">{getOilChipShortText()}</span>
               </button>
             )}
 
-            {/* Theme Toggle Button */}
-            <button 
-              className="btn-icon-only" 
+            <button
+              type="button"
+              className="btn-icon-only"
               onClick={toggleTheme}
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
-              aria-label="Toggle Theme"
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             >
               {theme === 'dark' ? <Sun size={18} color="#fadb14" /> : <Moon size={18} color="#52c41a" />}
             </button>
 
-            {/* Auth Action */}
             {user ? (
               <div className="nav-user-group">
                 {user.photoURL ? (
-                  <img 
-                    src={user.photoURL} 
-                    alt={user.displayName || 'User'} 
+                  <img
+                    src={user.photoURL}
+                    alt={user.displayName || 'User'}
                     className="nav-user-avatar"
                     title={user.email}
+                    referrerPolicy="no-referrer"
+                    width="34"
+                    height="34"
                   />
                 ) : (
-                  <div 
-                    className="nav-user-avatar-placeholder"
-                    title={user.email}
-                  >
+                  <div className="nav-user-avatar-placeholder" title={user.email} aria-hidden="true">
                     {(user.displayName || user.email || 'U')[0].toUpperCase()}
                   </div>
                 )}
-                <button 
-                  className="btn btn-secondary btn-nav-auth" 
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-nav-auth"
                   onClick={onSignOut}
                   title="Sign Out"
+                  aria-label="Sign out"
                 >
-                  <LogOut size={14} />
+                  <LogOut size={14} aria-hidden="true" />
                   <span className="desktop-only">Sign Out</span>
                 </button>
               </div>
             ) : (
-              <button 
-                className="btn btn-primary btn-nav-auth" 
-                onClick={onGoogleSignIn}
-              >
-                <LogIn size={15} />
-                <span>Google Sign In</span>
+              <button type="button" className="btn btn-primary btn-nav-auth" onClick={onGoogleSignIn}>
+                <LogIn size={15} aria-hidden="true" />
+                <span className="nav-signin-label">Sign In</span>
               </button>
             )}
           </div>
@@ -219,49 +212,19 @@ export function Navbar({
 
       {/* Mobile Bottom Navigation Bar */}
       {user && (
-        <nav className="mobile-bottom-nav">
-          <button 
-            className={`mobile-nav-item ${activeTab === 'track' ? 'active' : ''}`}
-            onClick={() => setActiveTab('track')}
-          >
-            <Gauge size={19} />
-            <span>Track</span>
-          </button>
-          <button 
-            className={`mobile-nav-item ${activeTab === 'garage' ? 'active' : ''}`}
-            onClick={() => setActiveTab('garage')}
-          >
-            <Car size={19} />
-            <span>Garage</span>
-          </button>
-          <button 
-            className={`mobile-nav-item ${activeTab === 'refills' ? 'active' : ''}`}
-            onClick={() => setActiveTab('refills')}
-          >
-            <Clock size={19} />
-            <span>Refills</span>
-          </button>
-          <button 
-            className={`mobile-nav-item ${activeTab === 'services' ? 'active' : ''}`}
-            onClick={() => setActiveTab('services')}
-          >
-            <Wrench size={19} />
-            <span>Services</span>
-          </button>
-          <button 
-            className={`mobile-nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
-            onClick={() => setActiveTab('analytics')}
-          >
-            <ChartIcon size={19} />
-            <span>Analytics</span>
-          </button>
-          <button 
-            className={`mobile-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-            onClick={() => setActiveTab('settings')}
-          >
-            <SettingsIcon size={19} />
-            <span>Settings</span>
-          </button>
+        <nav className="mobile-bottom-nav" aria-label="Primary mobile">
+          {navItems.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              className={`mobile-nav-item ${activeTab === id ? 'active' : ''}`}
+              aria-current={activeTab === id ? 'page' : undefined}
+              onClick={() => handleNavigate(id)}
+            >
+              <Icon size={20} aria-hidden="true" />
+              <span>{label}</span>
+            </button>
+          ))}
         </nav>
       )}
     </>

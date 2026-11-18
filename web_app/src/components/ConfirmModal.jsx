@@ -14,7 +14,7 @@ export function ConfirmModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" className="modal-content" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <AlertTriangle size={22} color={isDestructive ? 'var(--color-danger)' : 'var(--color-accent-fuel)'} />

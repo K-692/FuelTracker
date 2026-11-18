@@ -20,8 +20,31 @@ You can use the live web app directly in any desktop, tablet, or mobile browser 
 👉 **[https://k-692.github.io/FuelTracker/](https://k-692.github.io/FuelTracker/)**
 
 - **Google Authenticated:** Sign in with Google for real-time cloud synchronization backed by Google Cloud Firestore.
-- **Universal Browser Layout:** Responsive minimalist UI with Obsidian Dark and Crisp Slate Light theme modes.
+- **Mobile-First Responsive UI:** Designed for phones first, scaling up cleanly to tablets and desktops, with Obsidian Dark and Crisp Slate Light themes.
+- **Installable:** Add it to your phone's home screen ("Add to Home Screen" / "Install app") for a full-screen, app-like experience.
 - **Automated GitHub Deployment:** Continuously built and deployed via GitHub Actions ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)).
+
+---
+
+## 📱 Responsive, Cross-Browser UI
+
+The interface is built mobile-first and tested from small 320 px phones up to wide desktop monitors.
+
+| Screen | Navigation | Layout highlights |
+| --- | --- | --- |
+| **Phones** (≤ 768 px) | Fixed bottom tab bar with large touch targets | 2-column metric tiles, refill tables become stacked cards, forms open as swipe-style **bottom sheets**, full-width segmented controls |
+| **Tablets** (769–900 px) | Bottom tab bar | Wider cards and multi-column grids |
+| **Desktops** (≥ 901 px) | Top navigation tabs | Centered content, data tables, hover effects; compact header that never overlaps at any width |
+
+**Mobile & browser robustness**
+- Safe-area aware (iPhone notch / home indicator) using `viewport-fit=cover` and `env(safe-area-inset-*)`.
+- 44 px touch targets on touch screens; hover effects only on devices that truly hover (no "sticky hover" on phones).
+- Form fields use a 16 px font on touch devices so iOS Safari never auto-zooms when typing.
+- Dynamic viewport units (`dvh`) with `vh` fallbacks, so mobile browser toolbars don't cut off content.
+- Background scroll is locked while a dialog is open; `Esc` closes dialogs on desktop.
+- Charts measure their container and redraw at the real pixel width, keeping labels readable on phones; tap a point/bar to see its value.
+- Graceful fallbacks for older engines (`backdrop-filter`, `:has()`, `overflow: clip`), plus `prefers-reduced-motion`, visible keyboard focus rings, and ARIA roles on navigation, dialogs and notifications.
+- Production build targets Chrome/Edge 87+, Safari 14+ (iOS & macOS) and Firefox 78+, with Firebase, React and icons split into separately cached chunks.
 
 ---
 
@@ -144,9 +167,11 @@ FuelTracker/
 ├── web_app/                    # Universal React + Vite Web application
 │   ├── public/
 │   │   ├── icon.png            # App logo & favicon
-│   │   └── favicon.png
+│   │   ├── favicon.png
+│   │   └── manifest.webmanifest # Home-screen install metadata
 │   ├── src/
 │   │   ├── components/         # Navbar, Services, ServiceModal, Dashboard, Analytics, Settings, etc.
+│   │   ├── index.css           # Mobile-first design system (themes, breakpoints, responsive tables & sheets)
 │   │   ├── domain/             # FuelCalculator, serviceComponents (60 items), serviceCalculator
 │   │   ├── services/           # Firebase Auth, Cloud Firestore & unified storage repository
 │   │   └── utils/              # DD/Apr/YYYY date formatter
@@ -167,7 +192,7 @@ Contributions, issues, and feature requests are welcome!
 4. **Push to the Branch** (`git push origin feature/AmazingFeature`).
 5. **Open a Pull Request**.
 
-Please ensure that `npm run lint` and `npm run build` succeed without errors before submitting pull requests.
+Please ensure that `npm run lint` and `npm run build` succeed without errors before submitting pull requests. For UI changes, check the layout at a phone width (e.g. 375 px) as well as on desktop.
 
 ---
 

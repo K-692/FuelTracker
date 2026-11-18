@@ -2,7 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0c1322" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="FuelTracker" />
+    <meta name="format-detection" content="telephone=no" />
     <title>FuelTracker | The Ultimate Fuel Tracker</title>
     <meta name="description" content="Precision multi-vehicle fuel and mileage tracking powered by the authentic Previous Fill-Up method." />
     <meta name="color-scheme" content="dark light" />
@@ -10,6 +17,7 @@
     <!-- Browser Tab App Icon from App_icon/icon.png -->
     <link rel="icon" type="image/png" href="./icon.png" />
     <link rel="apple-touch-icon" href="./icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
     
     <!-- Google Fonts: Outfit (headings) and Plus Jakarta Sans (data/body) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,16 +29,22 @@
       (function() {
         try {
           const savedTheme = localStorage.getItem('fueltracker_theme');
-          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const prefersDark = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
           const theme = savedTheme ? savedTheme : (prefersDark ? 'dark' : 'light');
           document.documentElement.setAttribute('data-theme', theme);
           const meta = document.querySelector('meta[name="color-scheme"]');
           if (meta) meta.content = theme;
-        } catch (e) {}
+          document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) {
+            m.setAttribute('content', theme === 'dark' ? '#0c1322' : '#f8fafc');
+          });
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
       })();
     </script>
   </head>
   <body>
+    <noscript>FuelTracker needs JavaScript enabled to run.</noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

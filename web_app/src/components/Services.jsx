@@ -94,7 +94,7 @@ export function Services({
       <div className="services-container">
         <div className="dashboard-header" style={{ marginBottom: '24px' }}>
           <div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '4px' }}>
+            <h1 className="page-title">
               Vehicle Maintenance & Services
             </h1>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
@@ -123,7 +123,7 @@ export function Services({
       {/* Header */}
       <div className="dashboard-header" style={{ marginBottom: '20px' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '4px' }}>
+          <h1 className="page-title">
             Vehicle Maintenance & Services
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
@@ -401,7 +401,7 @@ export function Services({
 
       {/* Search and Filters */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: '240px', maxWidth: '400px' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: 'min(240px, 100%)', maxWidth: '400px' }}>
           <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
           <input 
             type="text"
@@ -596,7 +596,7 @@ export function Services({
                     <div 
                       style={{ 
                         display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', 
                         gap: '8px',
                         maxHeight: '360px',
                         overflowY: 'auto',

@@ -1,0 +1,14 @@
+{
+  "name": "FuelTracker",
+  "short_name": "FuelTracker",
+  "description": "Multi-vehicle fuel, mileage and servicing tracker.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0c1322",
+  "theme_color": "#0c1322",
+  "icons": [
+    { "src": "icon.png", "sizes": "1254x1254", "type": "image/png", "purpose": "any" }
+  ]
+}

@@ -33,7 +33,7 @@ export function Garage({
       {/* Header */}
       <div className="dashboard-header">
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '4px' }}>
+          <h1 className="page-title">
             Vehicle Garage
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
@@ -61,7 +61,7 @@ export function Garage({
           </button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '20px' }}>
           {vehicles.map(v => {
             const vEntries = entries.filter(e => e.vehicleId === v.id);
             const stats = FuelCalculator.calculateStatistics(vEntries);

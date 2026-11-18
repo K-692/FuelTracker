@@ -192,9 +192,9 @@ export function ServiceModal({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div 
-        className="modal-content service-modal-content" 
+        role="dialog" aria-modal="true" className="modal-content service-modal-content" 
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: '860px', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
+        style={{ maxWidth: '860px' }}
       >
         {/* Header */}
         <div className="modal-header">
@@ -236,7 +236,7 @@ export function ServiceModal({
               border: '1px solid rgba(245, 34, 45, 0.3)',
               color: 'var(--color-danger)',
               fontSize: '0.88rem',
-              margin: '0 24px 16px 24px'
+              margin: '0 0 16px 0'
             }}
           >
             {error}
@@ -244,9 +244,9 @@ export function ServiceModal({
         )}
 
         {/* Scrollable Form Body */}
-        <form onSubmit={handleSubmit} style={{ overflowY: 'auto', padding: '0 24px 20px 24px', flex: 1 }}>
+        <form onSubmit={handleSubmit} className="modal-scroll-body">
           {/* General Service Details */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '18px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '14px', marginBottom: '18px' }}>
             <div className="form-group">
               <label className="form-label">
                 <Calendar size={13} style={{ display: 'inline', marginRight: '4px' }} />
@@ -345,8 +345,8 @@ export function ServiceModal({
 
             {/* Filter / Search Bar */}
             <div style={{ display: 'flex', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
-              <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
-                <Search size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-dim)' }} />
+              <div style={{ position: 'relative', flex: '1 1 180px', minWidth: 0 }}>
+                <Search size={14} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none' }} />
                 <input 
                   type="text"
                   className="form-input"
@@ -359,7 +359,7 @@ export function ServiceModal({
 
               <select
                 className="form-select"
-                style={{ width: 'auto', minWidth: '160px', fontSize: '0.85rem', padding: '7px 10px' }}
+                style={{ flex: '1 1 160px', width: 'auto', minWidth: 0, fontSize: '0.85rem', padding: '7px 10px' }}
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
               >
@@ -395,11 +395,6 @@ export function ServiceModal({
                       key={comp.id}
                       className={`checklist-row ${isDone ? 'checklist-row-active' : ''}`}
                       style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'minmax(180px, 1fr) auto 130px',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '9px 14px',
                         borderBottom: '1px solid var(--border-subtle)',
                         background: isDone ? 'rgba(82, 196, 26, 0.05)' : 'transparent',
                         transition: 'background var(--transition-fast)'

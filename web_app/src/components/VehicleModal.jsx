@@ -55,7 +55,7 @@ export function VehicleModal({ isOpen, onClose, onSave, initialData = null }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Car size={22} color="var(--color-primary)" />
@@ -126,7 +126,7 @@ export function VehicleModal({ isOpen, onClose, onSave, initialData = null }) {
           </div>
 
           {/* Manufacturer & Model */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          <div className="form-grid-2">
             <div className="form-group">
               <label className="form-label">Manufacturer (Optional)</label>
               <input 

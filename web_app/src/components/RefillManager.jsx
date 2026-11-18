@@ -52,7 +52,7 @@ export function RefillManager({
       {/* Header */}
       <div className="dashboard-header">
         <div>
-          <h1 style={{ fontSize: '1.65rem', fontWeight: 800, marginBottom: '2px' }}>
+          <h1 className="page-title">
             Fuel Refill History
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
@@ -92,7 +92,7 @@ export function RefillManager({
           gap: '12px' 
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '220px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 220px', minWidth: 0 }}>
           <Search size={16} color="var(--text-dim)" />
           <input 
             type="text" 

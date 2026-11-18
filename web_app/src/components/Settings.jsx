@@ -93,7 +93,7 @@ export function Settings({
     <div className="settings-container" style={{ maxWidth: '800px', margin: '0 auto' }}>
       <div className="dashboard-header" style={{ marginBottom: '28px' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '4px' }}>
+          <h1 className="page-title">
             System Settings & Preferences
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
@@ -146,7 +146,7 @@ export function Settings({
             <h2 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Units, Localization & Service Thresholds</h2>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '18px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '16px', marginBottom: '18px' }}>
             <div className="form-group">
               <label className="form-label">Currency Symbol</label>
               <select 
@@ -194,7 +194,7 @@ export function Settings({
                 Vehicle engine oil degrades both mechanically from distance driven and chemically over calendar time. Following automotive best practices, service is prompted every <strong>{engineOilInterval.toLocaleString()} {unit}</strong> or <strong>{engineOilMonthsInterval} months</strong> from your last oil change, <em>whichever comes first</em>. The navigation bar and service hub will dynamically alert you according to both criteria.
               </p>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '16px' }}>
                 <div>
                   <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                     Distance Interval ({unit})
