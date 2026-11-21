@@ -14,6 +14,34 @@ A high-performance vehicle fuel telemetry, efficiency, and maintenance lifecycle
 
 ---
 
+## 📸 Screenshots
+
+### Fuel tracking dashboard
+Average mileage (Previous Fill-Up method), total distance, fuel spend and running cost per km for the active vehicle, plus the latest refill and recent activity.
+
+<img src="docs/screenshots/desktop-track-dashboard.jpg" alt="Track dashboard with mileage, distance, fuel cost and recent refills" width="820">
+
+### Analytics
+Mileage trend across every refill (with the lifetime average line), best mileage, operating cost and average fuel price — filterable by All time / 1Y / 90D / 30D.
+
+<img src="docs/screenshots/desktop-analytics-mileage.jpg" alt="Analytics: mileage trajectory curve and key metrics" width="820">
+
+<img src="docs/screenshots/desktop-analytics-charts.jpg" alt="Analytics: refill expenditure bars and fuel price trend" width="820">
+
+### Refill history & garage
+| Refill history (per-fill mileage, cost/km, price/L) | Multi-vehicle garage |
+| --- | --- |
+| <img src="docs/screenshots/desktop-refill-history.jpg" alt="Refill history list" width="420"> | <img src="docs/screenshots/desktop-garage.jpg" alt="Vehicle garage with per-vehicle stats" width="420"> |
+
+### On your phone
+| Dashboard | Log a refill (live mileage) | Refill history | Analytics |
+| --- | --- | --- | --- |
+| <img src="docs/screenshots/mobile-track-dashboard.jpg" alt="Mobile dashboard" width="200"> | <img src="docs/screenshots/mobile-log-refill.jpg" alt="Log refill form with live mileage calculation" width="200"> | <img src="docs/screenshots/mobile-refill-history.jpg" alt="Mobile refill history" width="200"> | <img src="docs/screenshots/mobile-analytics.jpg" alt="Mobile analytics with mileage chart" width="200"> |
+
+<sub>Screenshots use sample demo data.</sub>
+
+---
+
 ## 📲 Android App (APK)
 
 Download and install — no build tools needed:
