@@ -30,7 +30,7 @@ Download and install — no build tools needed:
 - Track dashboard: average mileage, distance, fuel spend and running cost per vehicle.
 - Refills: log, edit and delete with the Previous Fill-Up mileage method.
 - Garage: add, edit, delete and switch vehicles.
-- Services: log services using **your own service items**, add new items on the spot, manage your item list, and see the engine-oil reminder (distance or months, whichever comes first).
+- Services: log services using **your own service items**, add new ones from the **Add Item** pop-up (name + price), manage your item list, and see the engine-oil reminder (distance or months, whichever comes first).
 - Item-name suggestions while typing, based on your earlier service entries.
 - Works offline — changes sync automatically when you're back online.
 
@@ -93,10 +93,10 @@ Engine oil degrades through two independent physical vectors: mechanical shear/p
 
 ### 2. Your Own Service Items (user-defined servicing)
 Servicing items are **not pre-defined** — you build your own list, and it is shared by every vehicle on both web and Android:
-- **Add items anywhere:** in **Services → My Items**, or directly while logging a service ("Add Item"). New items are saved for future services and sync instantly to the other app.
+- **Add Item pop-up:** while logging a service, tap **Add Item** — a pop-up asks for the **item name** and its **price**. On *Add*, the item is marked as serviced with that price and you're back on the service form. Items can also be managed in **Services → My Items**. New items are saved for future services and sync instantly to the other app.
 - **Smart suggestions:** as you type an item name, FuelTracker suggests names you've used in earlier service entries (most-used first), so the same part is always recorded under the same name. Picking an existing item reuses it instead of creating a duplicate.
 - **Edit or remove items:** rename, group (optional) or remove an item at any time. Removing an item never changes past service records — they keep the item's name and charge.
-- **Engine-oil flag:** mark one item as **Engine oil** and the oil-change reminder uses it.
+- **Automatic engine-oil reminder:** an item named **Engine oil** is detected automatically and drives the oil-change reminder — no tick box needed.
 - **Per-item charges:** mark `Yes` for each item done, enter its charge, and optionally copy the items' total into the final bill.
 - **Existing data is kept:** records created with the old built-in checklist are preserved exactly; the items they used are added to your list automatically (nothing is deleted or rewritten).
 
@@ -104,7 +104,7 @@ Servicing items are **not pre-defined** — you build your own list, and it is s
 | --- |
 | <img src="docs/screenshots/web-service-items-desktop.jpg" alt="My Service Items list on desktop" width="640"> |
 
-| Name suggestions while typing (phone) | Log a service with your items (phone) |
+| Add Item pop-up with suggestions (phone) | Item added and marked serviced (phone) |
 | --- | --- |
 | <img src="docs/screenshots/web-item-suggestions-mobile.jpg" alt="Item name suggestions from earlier entries" width="260"> | <img src="docs/screenshots/web-log-service-mobile.jpg" alt="Logging a service with user-defined items on a phone" width="260"> |
 

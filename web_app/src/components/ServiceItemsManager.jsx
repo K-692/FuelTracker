@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Plus, Edit3, Trash2, Check, X, Droplet, ListChecks } from 'lucide-react';
+import { Plus, Edit3, Trash2, Check, X, ListChecks } from 'lucide-react';
 import { sortServiceItems, isEngineOilItem, getItemNameSuggestions } from '../domain/serviceItems';
 import { ItemNameInput } from './ItemNameInput';
 
@@ -16,8 +16,7 @@ export function ServiceItemsManager({
 }) {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
-  const [isOil, setIsOil] = useState(false);
-  const [editing, setEditing] = useState(null); // { id, name, category, isEngineOil }
+  const [editing, setEditing] = useState(null); // { id, name, category }
   const [busy, setBusy] = useState(false);
 
   const items = useMemo(() => sortServiceItems(serviceItems), [serviceItems]);
@@ -42,11 +41,10 @@ export function ServiceItemsManager({
     if (!name.trim() || busy) return;
     setBusy(true);
     try {
-      const saved = await onAdd({ name, category, isEngineOil: isOil });
+      const saved = await onAdd({ name, category });
       if (saved) {
         setName('');
         setCategory('');
-        setIsOil(false);
       }
     } finally {
       setBusy(false);
@@ -69,7 +67,7 @@ export function ServiceItemsManager({
       </div>
       <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
         Build your own list of parts and jobs. They appear in every service log, for all your vehicles, on web and Android.
-        Mark one item as <strong>Engine oil</strong> to power the oil-change reminder.
+        An item named <strong>Engine oil</strong> automatically powers the oil-change reminder.
       </p>
 
       <form className="add-item-row" onSubmit={handleAdd}>
@@ -91,11 +89,6 @@ export function ServiceItemsManager({
           onChange={(e) => setCategory(e.target.value)}
           aria-label="Service item group"
         />
-        <label className="oil-flag" title="Use this item for engine-oil change reminders">
-          <input type="checkbox" checked={isOil} onChange={(e) => setIsOil(e.target.checked)} />
-          <Droplet size={13} aria-hidden="true" />
-          <span>Engine oil</span>
-        </label>
         <button type="submit" className="btn btn-primary" disabled={!name.trim() || busy}>
           <Plus size={15} />
           <span>Add</span>
@@ -135,15 +128,6 @@ export function ServiceItemsManager({
                       onChange={(e) => setEditing(prev => ({ ...prev, category: e.target.value }))}
                       aria-label="Item group"
                     />
-                    <label className="oil-flag">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(editing.isEngineOil)}
-                        onChange={(e) => setEditing(prev => ({ ...prev, isEngineOil: e.target.checked }))}
-                      />
-                      <Droplet size={13} aria-hidden="true" />
-                      <span>Engine oil</span>
-                    </label>
                     <div className="item-actions">
                       <button type="button" className="btn-icon-only" onClick={handleSaveEdit} aria-label="Save item" title="Save">
                         <Check size={16} color="var(--color-primary)" />
@@ -169,7 +153,7 @@ export function ServiceItemsManager({
                       <button
                         type="button"
                         className="btn-icon-only"
-                        onClick={() => setEditing({ id: item.id, name: item.name, category: item.category || '', isEngineOil: isEngineOilItem(item) })}
+                        onClick={() => setEditing({ id: item.id, name: item.name, category: item.category || '' })}
                         aria-label={`Edit ${item.name}`}
                         title="Edit"
                       >

@@ -5,7 +5,7 @@ import { filterItemSuggestions } from '../domain/serviceItems';
  * Text input that suggests service-item names the user has used before
  * (current items + names from past service records). Works with touch and keyboard.
  */
-export function ItemNameInput({ value, onChange, onPick, onEnter, suggestions = [], placeholder, ariaLabel, style }) {
+export function ItemNameInput({ value, onChange, onPick, onEnter, suggestions = [], placeholder, ariaLabel, style, autoFocus = false, inputId }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const listId = useId();
@@ -35,6 +35,8 @@ export function ItemNameInput({ value, onChange, onPick, onEnter, suggestions = 
     <div className="suggest-wrap" style={style}>
       <input
         type="text"
+        id={inputId}
+        autoFocus={autoFocus}
         className="form-input"
         value={value}
         maxLength={60}

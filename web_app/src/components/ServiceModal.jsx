@@ -9,11 +9,10 @@ import {
   Gauge, 
   Building2, 
   FileText,
-  Plus,
-  Droplet
+  Plus
 } from 'lucide-react';
 import { sortServiceItems, isEngineOilItem, resolveItemName, getItemNameSuggestions } from '../domain/serviceItems';
-import { ItemNameInput } from './ItemNameInput';
+import { AddItemDialog } from './AddItemDialog';
 
 export function ServiceModal({
   isOpen,
@@ -36,9 +35,7 @@ export function ServiceModal({
   const [componentsState, setComponentsState] = useState({});
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [newItemName, setNewItemName] = useState('');
-  const [newItemIsOil, setNewItemIsOil] = useState(false);
-  const [isAddingItem, setIsAddingItem] = useState(false);
+  const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [error, setError] = useState('');
 
   // Synchronize modal state with initialData or defaults
@@ -72,8 +69,7 @@ export function ServiceModal({
     }
     setError('');
     setSearchQuery('');
-    setNewItemName('');
-    setNewItemIsOil(false);
+    setIsAddItemOpen(false);
   }, [initialData, isOpen, latestOdometer]);
 
   const vehicleType = activeVehicle?.vehicleType || 'CAR';
@@ -146,21 +142,14 @@ export function ServiceModal({
     });
   };
 
-  const handleAddItem = async () => {
-    const name = newItemName.trim();
-    if (!name || !onAddServiceItem) return;
-    setIsAddingItem(true);
-    try {
-      const item = await onAddServiceItem({ name, isEngineOil: newItemIsOil });
-      if (item) {
-        setComponentsState(prev => ({ ...prev, [item.id]: { done: true, price: prev[item.id]?.price ?? '', name: item.name } }));
-        setNewItemName('');
-        setNewItemIsOil(false);
-        setSearchQuery('');
-      }
-    } finally {
-      setIsAddingItem(false);
-    }
+  // From the Add Item pop-up: create (or reuse) the item and mark it serviced with its price
+  const handleAddItem = async ({ name, price }) => {
+    if (!onAddServiceItem) return false;
+    const item = await onAddServiceItem({ name });
+    if (!item) return false;
+    setComponentsState(prev => ({ ...prev, [item.id]: { done: true, price: price > 0 ? String(price) : '', name: item.name } }));
+    setSearchQuery('');
+    return true;
   };
 
   const handleApplySumToTotal = () => {
@@ -347,40 +336,20 @@ export function ServiceModal({
               marginBottom: '20px' 
             }}
           >
-            <div style={{ marginBottom: '12px' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                Items Serviced & Charges
-                <span className="badge badge-primary" style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
-                  {servicedCount} Serviced
-                </span>
-              </h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Your own list of service items. Select <strong>Yes</strong> for each item done and enter its charge. Add new items below — they are saved for future services too.
-              </p>
-            </div>
-
-            {/* Add a new item */}
-            <div className="add-item-row">
-              <ItemNameInput
-                value={newItemName}
-                onChange={setNewItemName}
-                onEnter={handleAddItem}
-                suggestions={nameSuggestions}
-                placeholder="Type an item, e.g. Chain lubrication"
-                ariaLabel="New service item name"
-              />
-              <label className="oil-flag" title="Use this item for engine-oil change reminders">
-                <input type="checkbox" checked={newItemIsOil} onChange={(e) => setNewItemIsOil(e.target.checked)} />
-                <Droplet size={13} aria-hidden="true" />
-                <span>Engine oil</span>
-              </label>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleAddItem}
-                disabled={!newItemName.trim() || isAddingItem}
-              >
-                <Plus size={15} />
+            <div className="items-section-header">
+              <div style={{ minWidth: 0 }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  Items Serviced & Charges
+                  <span className="badge badge-primary" style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
+                    {servicedCount} Serviced
+                  </span>
+                </h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Select <strong>Yes</strong> for each item done and enter its charge. Use <strong>Add Item</strong> for anything new — it is saved for future services too.
+                </p>
+              </div>
+              <button type="button" className="btn btn-primary" onClick={() => setIsAddItemOpen(true)}>
+                <Plus size={16} />
                 <span>Add Item</span>
               </button>
             </div>
@@ -413,7 +382,7 @@ export function ServiceModal({
               {allItems.length === 0 ? (
                 <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
                   <Wrench size={22} style={{ margin: '0 auto 8px auto', display: 'block', opacity: 0.6 }} />
-                  No service items yet. Add the parts or jobs you get serviced (e.g. <em>Engine oil</em>, <em>Air filter</em>) using the box above.
+                  No service items yet. Tap <strong>Add Item</strong> to add the parts or jobs you get serviced (e.g. <em>Engine oil</em>, <em>Air filter</em>).
                 </div>
               ) : visibleComponents.length === 0 ? (
                 <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
@@ -602,6 +571,14 @@ export function ServiceModal({
           </div>
         </form>
       </div>
+      {isAddItemOpen && (
+        <AddItemDialog
+          onClose={() => setIsAddItemOpen(false)}
+          onSubmit={handleAddItem}
+          suggestions={nameSuggestions}
+          currency={currency}
+        />
+      )}
     </div>
   );
 }

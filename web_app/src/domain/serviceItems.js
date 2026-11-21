@@ -33,7 +33,7 @@ export function slugifyItemName(name) {
 }
 
 /** Creates a new item object with a unique id that does not collide with `existing`. */
-export function createServiceItem({ name, category = '', isEngineOil = false }, existing = []) {
+export function createServiceItem({ name, category = '' }, existing = []) {
   const now = Date.now();
   const taken = new Set(existing.map(i => i.id));
   let id = `item_${slugifyItemName(name)}`;
@@ -42,15 +42,21 @@ export function createServiceItem({ name, category = '', isEngineOil = false }, 
     id,
     name: String(name).trim(),
     category: String(category || '').trim(),
-    isEngineOil: Boolean(isEngineOil),
+    isEngineOil: looksLikeEngineOil(name),
     createdAt: now,
     updatedAt: now,
   };
 }
 
-/** True if this item is the one used for engine-oil change reminders. */
+/** An item counts as an engine-oil change when it is named like "Engine oil" (not the filter). */
+export function looksLikeEngineOil(name) {
+  const n = String(name || '').toLowerCase();
+  return /engine\s*oil/.test(n) && !/filter/.test(n);
+}
+
+/** True if this item is used for engine-oil change reminders (detected from its name). */
 export function isEngineOilItem(item) {
-  return Boolean(item && (item.isEngineOil || item.id === LEGACY_ENGINE_OIL_ID));
+  return Boolean(item && (item.isEngineOil || item.id === LEGACY_ENGINE_OIL_ID || looksLikeEngineOil(item.name)));
 }
 
 /** Ids of every item that counts as an engine-oil change (always includes the legacy id). */

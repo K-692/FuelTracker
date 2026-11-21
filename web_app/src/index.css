@@ -1625,34 +1625,96 @@ input[type="number"] {
   color: var(--text-dim);
 }
 
-.oil-flag {
+.items-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.items-section-header > .btn {
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .items-section-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .items-section-header > .btn {
+    width: 100%;
+  }
+}
+
+/* Add Item pop-up sits above the service form */
+.modal-overlay.add-item-overlay {
+  z-index: 120;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.add-item-dialog {
+  max-width: 440px;
+  overflow: visible;
+}
+
+.add-item-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-glow);
+  color: var(--color-primary);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: var(--tap-size);
-  padding: 0 12px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-medium);
-  background: var(--bg-surface);
-  font-size: 0.82rem;
-  font-weight: 600;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.form-hint {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-top: 6px;
+}
+
+.form-error {
+  font-size: 0.85rem;
+  color: var(--color-danger);
+  background: rgba(245, 34, 45, 0.08);
+  border: 1px solid rgba(245, 34, 45, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.input-prefix {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--text-muted);
-  cursor: pointer;
-  user-select: none;
-  -webkit-user-select: none;
+  font-weight: 700;
+  pointer-events: none;
 }
 
-.oil-flag input {
-  width: 16px;
-  height: 16px;
-  accent-color: #52c41a;
-  margin: 0;
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
 }
 
-.oil-flag:has(input:checked) {
-  border-color: var(--border-active);
-  color: var(--color-primary);
-  background: var(--color-primary-glow);
+@media (max-width: 640px) {
+  .dialog-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .dialog-actions > .btn {
+    width: 100%;
+    min-height: 46px;
+  }
+  .add-item-dialog .suggest-list {
+    max-height: 200px;
+  }
 }
 
 .item-tag {

@@ -11,7 +11,14 @@ import java.time.temporal.ChronoUnit
 object ServiceItems {
     const val LEGACY_ENGINE_OIL_ID = "engine_oil"
 
-    fun isEngineOil(item: CloudServiceItem) = item.isEngineOil || item.id == LEGACY_ENGINE_OIL_ID
+    /** Named like "Engine oil" (but not the oil filter) — no tick box needed. */
+    fun looksLikeEngineOil(name: String): Boolean {
+        val n = name.lowercase()
+        return Regex("engine\\s*oil").containsMatchIn(n) && !n.contains("filter")
+    }
+
+    fun isEngineOil(item: CloudServiceItem) =
+        item.isEngineOil || item.id == LEGACY_ENGINE_OIL_ID || looksLikeEngineOil(item.name)
 
     fun engineOilIds(items: List<CloudServiceItem>): Set<String> =
         items.filter(::isEngineOil).map { it.id }.toSet() + LEGACY_ENGINE_OIL_ID
@@ -23,11 +30,11 @@ object ServiceItems {
     fun slug(name: String): String =
         name.lowercase().trim().replace(Regex("[^a-z0-9]+"), "_").trim('_').take(40).ifBlank { "item" }
 
-    fun newItem(name: String, category: String, isEngineOil: Boolean, existing: List<CloudServiceItem>): CloudServiceItem {
+    fun newItem(name: String, category: String, existing: List<CloudServiceItem>): CloudServiceItem {
         val now = System.currentTimeMillis()
         var id = "item_${slug(name)}"
         if (existing.any { it.id == id }) id = "${id}_${now.toString(36)}"
-        return CloudServiceItem(id, name.trim(), category.trim(), isEngineOil, now)
+        return CloudServiceItem(id, name.trim(), category.trim(), looksLikeEngineOil(name), now)
     }
 
     fun nameOf(id: String, items: List<CloudServiceItem>, data: ServicedItem? = null): String =

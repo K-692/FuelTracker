@@ -204,21 +204,21 @@ class AppViewModel @Inject constructor(
     fun deleteService(id: String) = write("Service record deleted") { cloud.deleteService(it, id) }
 
     /** Returns the created (or existing, if same name) item immediately for the UI. */
-    fun addServiceItem(name: String, category: String, isEngineOil: Boolean): CloudServiceItem? {
+    fun addServiceItem(name: String, category: String): CloudServiceItem? {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return null
         val items = _state.value.data.serviceItems
-        items.firstOrNull { it.name.equals(trimmed, ignoreCase = true) }?.let {
-            message("\"${it.name}\" already exists")
-            return it
-        }
-        val item = ServiceItems.newItem(trimmed, category, isEngineOil, items)
+        // Reuse an existing item with the same name (e.g. picked from suggestions)
+        items.firstOrNull { it.name.equals(trimmed, ignoreCase = true) }?.let { return it }
+        val item = ServiceItems.newItem(trimmed, category, items)
         write("Item \"${item.name}\" added") { cloud.saveServiceItems(it, listOf(item)) }
         return item
     }
 
-    fun updateServiceItem(item: CloudServiceItem) =
-        write("Item \"${item.name}\" updated") { cloud.saveServiceItems(it, listOf(item)) }
+    fun updateServiceItem(item: CloudServiceItem) {
+        val updated = item.copy(isEngineOil = ServiceItems.looksLikeEngineOil(item.name))
+        write("Item \"${updated.name}\" updated") { cloud.saveServiceItems(it, listOf(updated)) }
+    }
 
     fun deleteServiceItem(item: CloudServiceItem) =
         write("\"${item.name}\" removed from your items") { cloud.deleteServiceItem(it, item.id) }

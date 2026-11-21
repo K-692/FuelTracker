@@ -19,7 +19,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -191,7 +191,7 @@ fun ServiceEditor(
     currency: String,
     unit: String,
     suggestedOdometer: Double?,
-    onAddItem: (name: String, isOil: Boolean) -> CloudServiceItem?,
+    onAddItem: (name: String) -> CloudServiceItem?,
     pastServices: List<CloudService>,
     onSave: (CloudService) -> Unit,
     onDismiss: () -> Unit,
@@ -210,8 +210,7 @@ fun ServiceEditor(
         }
     }
     val addedLocally = remember { mutableStateMapOf<String, CloudServiceItem>() }
-    var newName by remember { mutableStateOf("") }
-    var newIsOil by remember { mutableStateOf(false) }
+    var showAddItem by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
     val allItems = run {
@@ -266,28 +265,15 @@ fun ServiceEditor(
         OutlinedTextField(notes, { notes = it }, label = { Text("Notes (optional)") }, modifier = Modifier.fillMaxWidth())
 
         Text("Items serviced", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
-        Text("Your own items. Tap Yes for each one done and enter its charge. New items are saved for next time.",
+        Text("Tap Yes for each item done and enter its charge. Use Add Item for anything new — it's saved for next time.",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-        // Add a new item inline
-        OutlinedTextField(newName, { newName = it.take(60) }, label = { Text("Type an item, e.g. Chain lubrication") },
-            singleLine = true, modifier = Modifier.fillMaxWidth())
-        NameSuggestions(newName, suggestions) { newName = it.name }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = newIsOil, onCheckedChange = { newIsOil = it })
-            Text("Engine oil (for reminders)", Modifier.weight(1f))
-            Button(onClick = {
-                val created = onAddItem(newName, newIsOil)
-                if (created != null) {
-                    addedLocally[created.id] = created
-                    state[created.id] = ItemEdit(true, state[created.id]?.price ?: "", created.name)
-                    newName = ""; newIsOil = false
-                }
-            }, enabled = newName.isNotBlank()) { Text("Add") }
+        Button(onClick = { showAddItem = true }, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Text("  Add Item", fontWeight = FontWeight.Bold)
         }
 
         if (allItems.isEmpty()) {
-            Text("No items yet — add the first thing you get serviced above.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("No items yet — tap Add Item to add the first thing you get serviced.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         allItems.forEach { item ->
             val e = state[item.id] ?: ItemEdit(false, "", item.name)
@@ -324,20 +310,35 @@ fun ServiceEditor(
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Button(onClick = save, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Save Service", fontWeight = FontWeight.Bold) }
     }
+
+    if (showAddItem) {
+        AddItemDialog(
+            currency = currency,
+            suggestions = suggestions,
+            onDismiss = { showAddItem = false },
+            onAdd = { name, price ->
+                val created = onAddItem(name)
+                if (created != null) {
+                    addedLocally[created.id] = created
+                    state[created.id] = ItemEdit(true, if (price > 0) formatPlain(price) else "", created.name)
+                }
+                showAddItem = false
+            },
+        )
+    }
 }
 
 @Composable
 fun ServiceItemsManager(
     items: List<CloudServiceItem>,
     services: List<CloudService>,
-    onAdd: (name: String, category: String, isOil: Boolean) -> Unit,
+    onAdd: (name: String, category: String) -> Unit,
     onUpdate: (CloudServiceItem) -> Unit,
     onDelete: (CloudServiceItem) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
-    var isOil by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<CloudServiceItem?>(null) }
     val usage = services.flatMap { s -> s.doneItems.map { it.first } }.groupingBy { it }.eachCount()
     val suggestions = remember(services, items) { ServiceItems.nameSuggestions(services, items).filter { !it.inList } }
@@ -348,13 +349,11 @@ fun ServiceItemsManager(
         OutlinedTextField(name, { name = it.take(60) }, label = { Text("Item name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         NameSuggestions(name, suggestions) { name = it.name }
         OutlinedTextField(category, { category = it.take(40) }, label = { Text("Group (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = isOil, onCheckedChange = { isOil = it })
-            Text("Engine oil (for reminders)", Modifier.weight(1f))
-            Button(onClick = { onAdd(name, category, isOil); name = ""; category = ""; isOil = false }, enabled = name.isNotBlank()) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Text(" Add")
-            }
+        Text("An item named \"Engine oil\" automatically powers the oil-change reminder.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Button(onClick = { onAdd(name, category); name = ""; category = "" }, enabled = name.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Text(" Add")
         }
         if (items.isEmpty()) {
             Text("No items yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -366,8 +365,7 @@ fun ServiceItemsManager(
                     OutlinedTextField(edit.name, { editing = edit.copy(name = it.take(60)) }, label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(edit.category, { editing = edit.copy(category = it.take(40)) }, label = { Text("Group") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = edit.isEngineOil, onCheckedChange = { editing = edit.copy(isEngineOil = it) })
-                        Text("Engine oil", Modifier.weight(1f))
+                        Spacer(Modifier.weight(1f))
                         IconButton(onClick = { if (edit.name.isNotBlank()) { onUpdate(edit.copy(name = edit.name.trim())); editing = null } }) {
                             Icon(Icons.Default.Check, contentDescription = "Save", tint = BrandGreen)
                         }
@@ -397,4 +395,50 @@ fun ServiceItemsManager(
             }
         }
     }
+}
+
+/** Pop-up on top of the service form: item name (with suggestions) + price. */
+@Composable
+fun AddItemDialog(
+    currency: String,
+    suggestions: List<ServiceItems.NameSuggestion>,
+    onDismiss: () -> Unit,
+    onAdd: (name: String, price: Double) -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+    var price by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Service Item", fontWeight = FontWeight.ExtraBold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(60); error = null },
+                    label = { Text("Item name") },
+                    placeholder = { Text("e.g. Spark plugs") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                NameSuggestions(name, suggestions) { name = it.name }
+                NumberField(price, { price = it; error = null }, "Price", prefix = currency)
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val p = if (price.isBlank()) 0.0 else price.toPositiveDouble()
+                    when {
+                        name.isBlank() -> error = "Please enter the item name"
+                        p == null -> error = "Please enter a valid price"
+                        else -> onAdd(name.trim(), p)
+                    }
+                },
+                enabled = name.isNotBlank(),
+            ) { Text("Add Item") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }

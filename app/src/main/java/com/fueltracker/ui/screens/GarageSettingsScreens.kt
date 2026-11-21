@@ -10,9 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
@@ -25,7 +23,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -168,7 +165,6 @@ fun SettingsScreen(
     onCurrency: (String) -> Unit,
     onUnit: (String) -> Unit,
     onSavePrefs: (CloudPreferences) -> Unit,
-    onSignOut: () -> Unit,
 ) {
     val prefs = state.data.preferences
     var km by remember(prefs) { mutableStateOf(prefs.engineOilInterval.toString()) }
@@ -177,33 +173,6 @@ fun SettingsScreen(
 
     LazyColumn(contentPadding = screenPadding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { PageHeader("Settings", null) }
-        item {
-            SectionCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(shape = CircleShape, color = BrandGreen, modifier = Modifier.size(40.dp)) {
-                        androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                (state.user?.displayName ?: state.user?.email ?: "U").take(1).uppercase(),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                    }
-                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                        Text(state.user?.displayName ?: "Signed in", fontWeight = FontWeight.Bold)
-                        Text(state.user?.email ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                Text("Data syncs with the FuelTracker web app in real time.", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
-                    Text("  Sign out")
-                }
-            }
-        }
         item {
             SectionCard {
                 Text("Engine-oil reminder", fontWeight = FontWeight.ExtraBold)

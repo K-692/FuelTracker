@@ -24,6 +24,8 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -137,6 +139,7 @@ fun FuelTrackerRoot(vm: AppViewModel) {
     var tab by rememberSaveable { mutableStateOf(Tab.TRACK) }
     var editor by remember { mutableStateOf<Editor?>(null) }
     var confirm by remember { mutableStateOf<Confirm?>(null) }
+    var confirmSignOut by remember { mutableStateOf(false) }
     BackHandler(enabled = tab != Tab.TRACK) { tab = Tab.TRACK }
 
     val vehicle = state.activeVehicle
@@ -174,8 +177,11 @@ fun FuelTrackerRoot(vm: AppViewModel) {
                             onClick = { tab = Tab.SERVICES },
                             label = { Text("🛢️ " + oilShortText(oil, state.unit), fontWeight = FontWeight.Bold) },
                             colors = AssistChipDefaults.assistChipColors(labelColor = oilColor(oil.state)),
-                            modifier = Modifier.padding(end = 8.dp),
+                            modifier = Modifier.padding(end = 4.dp),
                         )
+                    }
+                    IconButton(onClick = { confirmSignOut = true }) {
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Sign out")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
@@ -223,7 +229,7 @@ fun FuelTrackerRoot(vm: AppViewModel) {
                     onDeleteService = { confirm = Confirm.DeleteService(it) },
                     onManageItems = { editor = Editor.Items },
                 )
-                Tab.SETTINGS -> SettingsScreen(state, vm::setCurrency, vm::setUnit, vm::savePreferences, vm::signOut)
+                Tab.SETTINGS -> SettingsScreen(state, vm::setCurrency, vm::setUnit, vm::savePreferences)
             }
         }
     }
@@ -245,7 +251,7 @@ fun FuelTrackerRoot(vm: AppViewModel) {
             items = state.data.serviceItems,
             currency = state.currency, unit = state.unit,
             suggestedOdometer = latestOdo,
-            onAddItem = { name, isOil -> vm.addServiceItem(name, "", isOil) },
+            onAddItem = { name -> vm.addServiceItem(name, "") },
             pastServices = state.data.services,
             onSave = vm::saveService,
             onDismiss = { editor = null },
@@ -253,7 +259,7 @@ fun FuelTrackerRoot(vm: AppViewModel) {
         Editor.Items -> ServiceItemsManager(
             items = state.data.serviceItems,
             services = state.data.services,
-            onAdd = { n, c, o -> vm.addServiceItem(n, c, o) },
+            onAdd = { n, c -> vm.addServiceItem(n, c) },
             onUpdate = vm::updateServiceItem,
             onDelete = { confirm = Confirm.DeleteItem(it) },
             onDismiss = { editor = null },
@@ -273,5 +279,15 @@ fun FuelTrackerRoot(vm: AppViewModel) {
             "It is removed from your item list. Past service records keep it unchanged.", confirmText = "Remove",
             onConfirm = { vm.deleteServiceItem(c.item) }, onDismiss = { confirm = null })
         null -> Unit
+    }
+
+    if (confirmSignOut) {
+        ConfirmDelete(
+            title = "Sign out?",
+            message = "Your data stays safe in your account. Sign in again any time.",
+            confirmText = "Sign out",
+            onConfirm = { vm.signOut() },
+            onDismiss = { confirmSignOut = false },
+        )
     }
 }

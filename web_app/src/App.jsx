@@ -10,7 +10,6 @@ import { Settings } from './components/Settings';
 import { RefillModal } from './components/RefillModal';
 import { ServiceModal } from './components/ServiceModal';
 import { VehicleModal } from './components/VehicleModal';
-import { FirebaseModal } from './components/FirebaseModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { Toast } from './components/Toast';
 
@@ -19,11 +18,10 @@ import { ServiceCalculator } from './domain/serviceCalculator';
 import { 
   loginWithGoogle, 
   logoutUser, 
-  subscribeToAuth, 
-  initializeFirebaseServices 
+  subscribeToAuth
 } from './services/firebase';
 import { DEFAULT_FUEL_TYPES } from './services/defaultData';
-import { deriveMissingServiceItems, getEngineOilItemIds, createServiceItem } from './domain/serviceItems';
+import { deriveMissingServiceItems, getEngineOilItemIds, createServiceItem, looksLikeEngineOil } from './domain/serviceItems';
 
 export default function App() {
   // Theme state
@@ -84,7 +82,6 @@ export default function App() {
   const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState(null);
 
-  const [isFirebaseModalOpen, setIsFirebaseModalOpen] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   // Toast feedback state
@@ -175,15 +172,12 @@ export default function App() {
   }, [activeVehicleServices, activeVehicleFuelEntries, engineOilInterval, engineOilMonthsInterval, activeVehicleId, oilItemIds]);
 
   // User-defined servicing items
-  const handleAddServiceItem = async ({ name, category = '', isEngineOil = false }) => {
+  const handleAddServiceItem = async ({ name, category = '' }) => {
     const trimmed = String(name || '').trim();
     if (!trimmed) return null;
     const duplicate = serviceItems.find(i => i.name.trim().toLowerCase() === trimmed.toLowerCase());
-    if (duplicate) {
-      showNotification(`"${duplicate.name}" already exists.`, 'info');
-      return duplicate;
-    }
-    const item = createServiceItem({ name: trimmed, category, isEngineOil }, serviceItems);
+    if (duplicate) return duplicate; // reuse the existing item (picked from suggestions)
+    const item = createServiceItem({ name: trimmed, category }, serviceItems);
     const [saved] = await StorageService.saveServiceItems(user, [item]);
     setServiceItems(prev => [...prev, saved]);
     showNotification(`Service item "${saved.name}" added.`, 'success');
@@ -193,7 +187,7 @@ export default function App() {
   const handleUpdateServiceItem = async (item) => {
     const trimmed = String(item.name || '').trim();
     if (!trimmed) return;
-    const [saved] = await StorageService.saveServiceItems(user, [{ ...item, name: trimmed }]);
+    const [saved] = await StorageService.saveServiceItems(user, [{ ...item, name: trimmed, isEngineOil: looksLikeEngineOil(trimmed) }]);
     setServiceItems(prev => prev.map(i => (i.id === saved.id ? saved : i)));
     showNotification(`Service item "${saved.name}" updated.`, 'success');
   };
@@ -215,7 +209,7 @@ export default function App() {
   // While any modal is open: lock background scroll (prevents iOS/Android scroll bleed)
   // and allow the Escape key to close the top-most dialog.
   const anyModalOpen =
-    isRefillModalOpen || isServiceModalOpen || isVehicleModalOpen || isFirebaseModalOpen || confirmDialog.isOpen;
+    isRefillModalOpen || isServiceModalOpen || isVehicleModalOpen || confirmDialog.isOpen;
 
   useEffect(() => {
     if (!anyModalOpen) return undefined;
@@ -226,7 +220,6 @@ export default function App() {
     const onKeyDown = (e) => {
       if (e.key !== 'Escape') return;
       if (confirmDialog.isOpen) setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-      else if (isFirebaseModalOpen) setIsFirebaseModalOpen(false);
       else if (isServiceModalOpen) setIsServiceModalOpen(false);
       else if (isRefillModalOpen) setIsRefillModalOpen(false);
       else if (isVehicleModalOpen) setIsVehicleModalOpen(false);
@@ -238,7 +231,7 @@ export default function App() {
       document.body.classList.remove('modal-open');
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [anyModalOpen, confirmDialog.isOpen, isFirebaseModalOpen, isServiceModalOpen, isRefillModalOpen, isVehicleModalOpen]);
+  }, [anyModalOpen, confirmDialog.isOpen, isServiceModalOpen, isRefillModalOpen, isVehicleModalOpen]);
 
   // Auth Subscription
   useEffect(() => {
@@ -540,10 +533,6 @@ export default function App() {
             setEngineOilInterval={setEngineOilInterval}
             engineOilMonthsInterval={engineOilMonthsInterval}
             setEngineOilMonthsInterval={setEngineOilMonthsInterval}
-            user={user}
-            onGoogleSignIn={handleGoogleSignIn}
-            onSignOut={handleSignOut}
-            onOpenFirebaseModal={() => setIsFirebaseModalOpen(true)}
           />
         )}
       </main>
@@ -580,16 +569,6 @@ export default function App() {
         onClose={() => setIsVehicleModalOpen(false)}
         onSave={handleSaveVehicle}
         initialData={editingVehicle}
-      />
-
-      <FirebaseModal 
-        isOpen={isFirebaseModalOpen}
-        onClose={() => setIsFirebaseModalOpen(false)}
-        onConfigSaved={() => {
-          initializeFirebaseServices();
-          refreshData();
-          showNotification('Firebase credentials applied!', 'success');
-        }}
       />
 
       <ConfirmModal 

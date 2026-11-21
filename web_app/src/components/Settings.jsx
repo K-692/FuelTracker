@@ -2,15 +2,9 @@ import React from 'react';
 import { 
   Sun, 
   Moon, 
-  Database, 
-  Key, 
-  LogIn, 
-  LogOut, 
   Sliders, 
-  CheckCircle2,
   Wrench
 } from 'lucide-react';
-import { isFirebaseConfigured } from '../services/firebase';
 
 export function Settings({ 
   theme, 
@@ -22,14 +16,8 @@ export function Settings({
   engineOilInterval = 5000,
   setEngineOilInterval,
   engineOilMonthsInterval = 6,
-  setEngineOilMonthsInterval,
-  user, 
-  onGoogleSignIn, 
-  onSignOut,
-  onOpenFirebaseModal
+  setEngineOilMonthsInterval
 }) {
-  const fbReady = isFirebaseConfigured();
-
   return (
     <div className="settings-container" style={{ maxWidth: '800px', margin: '0 auto' }}>
       <div className="dashboard-header" style={{ marginBottom: '28px' }}>
@@ -38,7 +26,7 @@ export function Settings({
             System Settings & Preferences
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Customize your visual theme, vehicle service intervals, and cloud database connectivity.
+            Customize your visual theme, units and engine-oil service intervals.
           </p>
         </div>
       </div>
@@ -180,64 +168,6 @@ export function Settings({
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Cloud Firestore & Google Auth Card */}
-        <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Database size={20} color="var(--color-primary)" />
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Cloud Sync & Google Auth</h2>
-            </div>
-
-            {fbReady ? (
-              <span className="badge badge-primary">
-                <CheckCircle2 size={12} />
-                <span>Firebase Connected</span>
-              </span>
-            ) : (
-              <span className="badge badge-amber">
-                Demo / Local Mode
-              </span>
-            )}
-          </div>
-
-          <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '18px', lineHeight: '1.6' }}>
-            {user ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                <div>
-                  <div style={{ color: 'var(--text-main)', fontWeight: 700 }}>
-                    Signed in as {user.displayName || user.email}
-                  </div>
-                  <div style={{ fontSize: '0.78rem' }}>UID: {user.uid}</div>
-                </div>
-                <button className="btn btn-secondary" onClick={onSignOut} style={{ fontSize: '0.85rem' }}>
-                  <LogOut size={15} />
-                  <span>Sign Out</span>
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                <div>
-                  Connect your Google Account to automatically sync telemetry and maintenance data with Cloud Firestore.
-                </div>
-                <button className="btn btn-primary" onClick={onGoogleSignIn} style={{ fontSize: '0.88rem' }}>
-                  <LogIn size={15} />
-                  <span>Sign In with Google</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Configure or change Firebase API credentials for this browser:
-            </div>
-            <button className="btn btn-secondary" onClick={onOpenFirebaseModal} style={{ fontSize: '0.85rem' }}>
-              <Key size={15} />
-              <span>Configure Firebase Keys</span>
-            </button>
           </div>
         </div>
 
