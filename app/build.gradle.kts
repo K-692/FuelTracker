@@ -1,20 +1,33 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
 }
+
+
+// Release signing: reads keystore details from keystore.properties (never committed)
+// or from environment variables (CI). Falls back to the debug key if neither exists.
+val keystoreProps = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun signingValue(key: String, env: String): String? =
+    (keystoreProps.getProperty(key) ?: System.getenv(env))?.takeIf { it.isNotBlank() }
 
 android {
     namespace = "com.fueltracker"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.fueltracker"
+        applicationId = "com.fueltracker.app"
         minSdk = 27
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -22,8 +35,22 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            val storePath = signingValue("storeFile", "FT_KEYSTORE_PATH")
+            if (storePath != null) {
+                storeFile = rootProject.file(storePath)
+                storePassword = signingValue("storePassword", "FT_KEYSTORE_PASSWORD")
+                keyAlias = signingValue("keyAlias", "FT_KEY_ALIAS")
+                keyPassword = signingValue("keyPassword", "FT_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            val releaseSigning = signingConfigs.getByName("release")
+            signingConfig = if (releaseSigning.storeFile != null) releaseSigning else signingConfigs.getByName("debug")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -77,17 +104,15 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
-    implementation(libs.room.runtime)
-    implementation(libs.room.ktx)
-    ksp(libs.room.compiler)
 
-    implementation(libs.androidx.datastore.preferences)
-
-    implementation(libs.vico.compose)
-    implementation(libs.vico.compose.m3)
-    implementation(libs.vico.core)
-
-    implementation(libs.gson)
+    // Same backend as the web app: Firebase Auth (Google sign-in) + Cloud Firestore
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.googleid)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -4,7 +4,7 @@
  * and component price / frequency analytics.
  */
 
-import { SERVICE_COMPONENTS } from './serviceComponents.js';
+import { LEGACY_ENGINE_OIL_ID, resolveItemName, resolveItemCategory } from './serviceItems.js';
 
 export const ServiceCalculator = {
   /**
@@ -129,7 +129,8 @@ export const ServiceCalculator = {
     fuelEntries = [], 
     intervalKm = 5000, 
     intervalMonths = 6, 
-    referenceDate = new Date()
+    referenceDate = new Date(),
+    oilItemIds = [LEGACY_ENGINE_OIL_ID]
   ) {
     const currentOdo = this.getLatestOdometer(fuelEntries, serviceEntries);
     const baselineOdo = this.getBaselineOdometer(fuelEntries, serviceEntries);
@@ -140,11 +141,11 @@ export const ServiceCalculator = {
     today.setHours(0, 0, 0, 0);
     const msPerDay = 1000 * 60 * 60 * 24;
 
-    // Filter service entries where Engine Oil was changed (component 'engine_oil')
-    const oilServices = (serviceEntries || []).filter(s => {
-      const comp = s.components?.['engine_oil'];
-      return comp && comp.done === true;
-    });
+    // Filter service entries where an engine-oil item was serviced
+    const oilIds = Array.isArray(oilItemIds) && oilItemIds.length > 0 ? oilItemIds : [LEGACY_ENGINE_OIL_ID];
+    const oilServices = (serviceEntries || []).filter(s =>
+      oilIds.some(id => s.components?.[id]?.done === true)
+    );
 
     if (oilServices.length === 0) {
       // No recorded engine oil service yet
@@ -352,22 +353,8 @@ export const ServiceCalculator = {
    * @param {Array} serviceEntries - Service entries for the vehicle
    * @returns {Array} List of components with count, totalSpend, and lastServiceDate
    */
-  calculateComponentFrequency(serviceEntries = []) {
+  calculateComponentFrequency(serviceEntries = [], serviceItems = []) {
     const map = new Map();
-
-    // Initialize all components with 0 count
-    SERVICE_COMPONENTS.forEach(c => {
-      map.set(c.id, {
-        id: c.id,
-        number: c.number,
-        name: c.name,
-        category: c.category,
-        vehicleLabel: c.vehicleLabel,
-        count: 0,
-        totalSpend: 0,
-        history: [],
-      });
-    });
 
     serviceEntries.forEach(entry => {
       if (!entry.components) return;
@@ -375,10 +362,8 @@ export const ServiceCalculator = {
         if (data && data.done) {
           const item = map.get(compId) || {
             id: compId,
-            number: 99,
-            name: compId,
-            category: 'Other',
-            vehicleLabel: 'Both',
+            name: resolveItemName(compId, serviceItems, data),
+            category: resolveItemCategory(compId, serviceItems) || 'General',
             count: 0,
             totalSpend: 0,
             history: [],

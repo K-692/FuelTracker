@@ -23,6 +23,7 @@ import {
   initializeFirebaseServices 
 } from './services/firebase';
 import { DEFAULT_FUEL_TYPES } from './services/defaultData';
+import { deriveMissingServiceItems, getEngineOilItemIds, createServiceItem } from './domain/serviceItems';
 
 export default function App() {
   // Theme state
@@ -41,6 +42,7 @@ export default function App() {
   const [activeVehicleId, setActiveVehicleId] = useState(null);
   const [fuelEntries, setFuelEntries] = useState([]);
   const [services, setServices] = useState([]);
+  const [serviceItems, setServiceItems] = useState([]);
   const [fuelTypes, setFuelTypes] = useState(DEFAULT_FUEL_TYPES);
 
   // When not signed in, strictly lock tab to 'landing'. When signed in, overview is never shown.
@@ -62,12 +64,14 @@ export default function App() {
     const safeVal = Number(val) > 0 ? Number(val) : 5000;
     setEngineOilIntervalState(safeVal);
     localStorage.setItem('fueltracker_oil_interval', String(safeVal));
+    StorageService.savePreferences(user, { engineOilInterval: safeVal });
   };
 
   const setEngineOilMonthsInterval = (val) => {
     const safeVal = Number(val) > 0 ? Number(val) : 6;
     setEngineOilMonthsIntervalState(safeVal);
     localStorage.setItem('fueltracker_oil_months_interval', String(safeVal));
+    StorageService.savePreferences(user, { engineOilMonthsInterval: safeVal });
   };
 
   // Modal dialog states
@@ -124,6 +128,16 @@ export default function App() {
       setVehicles(data.vehicles);
       setFuelEntries(data.entries);
       setServices(data.services || []);
+
+      // Non-destructive migration: turn items used by existing service records into
+      // user-defined items (nothing is deleted or rewritten).
+      let items = data.serviceItems || [];
+      const missing = deriveMissingServiceItems(data.services || [], items);
+      if (missing.length > 0) {
+        const saved = await StorageService.saveServiceItems(currentUser, missing);
+        items = [...items, ...saved];
+      }
+      setServiceItems(items);
       setFuelTypes(data.fuelTypes || DEFAULT_FUEL_TYPES);
       if (data.engineOilInterval) {
         setEngineOilIntervalState(data.engineOilInterval);
@@ -146,15 +160,57 @@ export default function App() {
     return fuelEntries.filter(e => e.vehicleId === activeVehicleId);
   }, [fuelEntries, activeVehicleId]);
 
+  const oilItemIds = useMemo(() => getEngineOilItemIds(serviceItems), [serviceItems]);
+
   const engineOilStatus = useMemo(() => {
     if (!activeVehicleId) return null;
     return ServiceCalculator.calculateEngineOilStatus(
       activeVehicleServices,
       activeVehicleFuelEntries,
       engineOilInterval,
-      engineOilMonthsInterval
+      engineOilMonthsInterval,
+      undefined,
+      oilItemIds
     );
-  }, [activeVehicleServices, activeVehicleFuelEntries, engineOilInterval, engineOilMonthsInterval, activeVehicleId]);
+  }, [activeVehicleServices, activeVehicleFuelEntries, engineOilInterval, engineOilMonthsInterval, activeVehicleId, oilItemIds]);
+
+  // User-defined servicing items
+  const handleAddServiceItem = async ({ name, category = '', isEngineOil = false }) => {
+    const trimmed = String(name || '').trim();
+    if (!trimmed) return null;
+    const duplicate = serviceItems.find(i => i.name.trim().toLowerCase() === trimmed.toLowerCase());
+    if (duplicate) {
+      showNotification(`"${duplicate.name}" already exists.`, 'info');
+      return duplicate;
+    }
+    const item = createServiceItem({ name: trimmed, category, isEngineOil }, serviceItems);
+    const [saved] = await StorageService.saveServiceItems(user, [item]);
+    setServiceItems(prev => [...prev, saved]);
+    showNotification(`Service item "${saved.name}" added.`, 'success');
+    return saved;
+  };
+
+  const handleUpdateServiceItem = async (item) => {
+    const trimmed = String(item.name || '').trim();
+    if (!trimmed) return;
+    const [saved] = await StorageService.saveServiceItems(user, [{ ...item, name: trimmed }]);
+    setServiceItems(prev => prev.map(i => (i.id === saved.id ? saved : i)));
+    showNotification(`Service item "${saved.name}" updated.`, 'success');
+  };
+
+  const handleDeleteServiceItem = (item) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: `Remove "${item.name}"?`,
+      message: 'It will be removed from your list of service items. Past service records are kept unchanged and still show this item.',
+      confirmText: 'Remove',
+      onConfirm: async () => {
+        await StorageService.deleteServiceItem(user, item.id);
+        setServiceItems(prev => prev.filter(i => i.id !== item.id));
+        showNotification(`"${item.name}" removed from your items.`, 'info');
+      }
+    });
+  };
 
   // While any modal is open: lock background scroll (prevents iOS/Android scroll bleed)
   // and allow the Escape key to close the top-most dialog.
@@ -366,52 +422,6 @@ export default function App() {
     });
   };
 
-  // Data Backup Export / Import Handlers
-  const handleExportBackup = () => {
-    try {
-      const jsonString = StorageService.exportBackup(
-        vehicles, 
-        fuelTypes, 
-        fuelEntries, 
-        services, 
-        engineOilInterval,
-        engineOilMonthsInterval
-      );
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `FuelTracker_AutoBackup_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showNotification('Exported FuelTracker_AutoBackup.json successfully', 'success');
-    } catch (err) {
-      showNotification(`Export failed: ${err.message}`, 'error');
-    }
-  };
-
-  const handleImportBackup = async (jsonString) => {
-    try {
-      const restored = await StorageService.importBackup(user, jsonString);
-      setVehicles(restored.vehicles);
-      setFuelEntries(restored.entries);
-      setServices(restored.services);
-      setFuelTypes(restored.fuelTypes);
-      setEngineOilIntervalState(restored.engineOilInterval || 5000);
-      setEngineOilMonthsIntervalState(restored.engineOilMonthsInterval || 6);
-      setActiveVehicleId(restored.activeVehicleId);
-      showNotification(
-        `Restored ${restored.vehicles.length} vehicle(s), ${restored.entries.length} refill(s), and ${restored.services.length} service(s)!`, 
-        'success'
-      );
-    } catch (err) {
-      showNotification(`Import failed: ${err.message}`, 'error');
-      throw err;
-    }
-  };
-
   const currentActiveVehicle = vehicles.find(v => v.id === activeVehicleId) || vehicles[0];
 
   return (
@@ -498,6 +508,10 @@ export default function App() {
             unit={unit}
             engineOilInterval={engineOilInterval}
             engineOilMonthsInterval={engineOilMonthsInterval}
+            serviceItems={serviceItems}
+            onAddServiceItem={handleAddServiceItem}
+            onUpdateServiceItem={handleUpdateServiceItem}
+            onDeleteServiceItem={handleDeleteServiceItem}
           />
         )}
 
@@ -508,6 +522,7 @@ export default function App() {
             onSelectVehicle={handleSelectVehicle}
             entries={fuelEntries}
             services={services}
+            serviceItems={serviceItems}
             currency={currency}
             unit={unit}
           />
@@ -529,9 +544,6 @@ export default function App() {
             onGoogleSignIn={handleGoogleSignIn}
             onSignOut={handleSignOut}
             onOpenFirebaseModal={() => setIsFirebaseModalOpen(true)}
-            onExportBackup={handleExportBackup}
-            onImportBackup={handleImportBackup}
-            showNotification={showNotification}
           />
         )}
       </main>
@@ -558,6 +570,9 @@ export default function App() {
         currency={currency}
         unit={unit}
         latestOdometer={engineOilStatus?.currentOdometer || 0}
+        serviceItems={serviceItems}
+        services={services}
+        onAddServiceItem={handleAddServiceItem}
       />
 
       <VehicleModal 
@@ -583,6 +598,7 @@ export default function App() {
         onConfirm={confirmDialog.onConfirm}
         title={confirmDialog.title}
         message={confirmDialog.message}
+        confirmText={confirmDialog.confirmText || 'Delete'}
       />
 
       {/* Toast Feedback */}

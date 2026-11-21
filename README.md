@@ -3,13 +3,39 @@
 A high-performance vehicle fuel telemetry, efficiency, and maintenance lifecycle web application engineered with authentic **Previous Fill-Up** combustion physics and an automotive **Dual-Threshold Engine Oil Telemetry Engine (Distance & Time Duration)**.
 
 [![Live Web App](https://img.shields.io/badge/Live%20Web%20App-k--692.github.io%2FFuelTracker-52c41a?style=for-the-badge&logo=google-chrome&logoColor=white)](https://k-692.github.io/FuelTracker/)
+[![Download APK](https://img.shields.io/badge/Android-Download%20APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/K-692/FuelTracker/releases/latest/download/FuelTracker.apk)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-K--692%2FFuelTracker-1890ff?style=for-the-badge&logo=github&logoColor=white)](https://github.com/K-692/FuelTracker)
 [![React 19](https://img.shields.io/badge/React-19-61dafb?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Vite 8](https://img.shields.io/badge/Vite-8-646cff?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](LICENSE)
 
 > [!NOTE]
-> **Platform Support Notice:** Support for the legacy native Android and iOS mobile applications has concluded. FuelTracker is now exclusively maintained as a cloud-synchronized, responsive **Universal Web Application** accessible across all modern desktop, tablet, and mobile browsers.
+> **Two apps, one account.** FuelTracker runs as a responsive **web app** (any browser) and a native **Android app** (APK). Both sign in with Google and use the **same Firebase database**, so a refill or service logged on your phone appears on the web instantly — and vice versa.
+
+---
+
+## 📲 Android App (APK)
+
+Download and install — no build tools needed:
+
+👉 **[Download FuelTracker.apk (latest release)](https://github.com/K-692/FuelTracker/releases/latest/download/FuelTracker.apk)** · [All releases](https://github.com/K-692/FuelTracker/releases)
+
+**Install steps**
+1. Open the download link on your Android phone (Android 8.1 or newer).
+2. Open the downloaded `FuelTracker.apk`. If asked, allow your browser/files app to **install unknown apps** (Settings → Apps → Special access → Install unknown apps).
+3. Tap **Install**, open FuelTracker and tap **Sign in with Google** using the same Google account you use on the web app.
+
+**What the Android app includes**
+- Google sign-in and live sync with the web app (same Firebase project and Firestore documents).
+- Track dashboard: average mileage, distance, fuel spend and running cost per vehicle.
+- Refills: log, edit and delete with the Previous Fill-Up mileage method.
+- Garage: add, edit, delete and switch vehicles.
+- Services: log services using **your own service items**, add new items on the spot, manage your item list, and see the engine-oil reminder (distance or months, whichever comes first).
+- Item-name suggestions while typing, based on your earlier service entries.
+- Works offline — changes sync automatically when you're back online.
+
+> [!TIP]
+> Updating? Install the newer APK over the existing app — your data lives in your cloud account and is kept.
 
 ---
 
@@ -65,17 +91,26 @@ Engine oil degrades through two independent physical vectors: mechanical shear/p
   2. *Duration Progress Track:* Shows elapsed days and months, days remaining, and target due date (`DD/Apr/YYYY`).
 - **Account Safety & Zero-Mutation Guard:** Adding or updating interval thresholds strictly preserves all existing user records, fuel refill entries, vehicle profiles, and service history without overwriting user account data.
 
-### 2. 60-Component Vehicle Servicing & Maintenance Engine
-A granular vehicle-specific maintenance ledger:
-- **60 Vehicle Components:** Classified across Engine & Lubrication, Cooling, Ignition & Fuel, Transmission & Drivetrain, Brakes & Wheels, Suspension & Steering, Electrical & ECU, Body & Cabin, and Exhaust & Emissions.
-- **Intelligent Vehicle Type Filtering:** Automatically filters components based on vehicle category (Cars vs Two-Wheelers / Motorcycles / Scooters) while retaining full manual toggle override.
-- **Granular Checklist & Component Charges:** Defaults to `No`; toggle `Yes` for components serviced and input individual component charges.
-- **Custom Final Invoice Total:** User directly enters the final overall bill amount with optional auto-sum assistance.
-- **Universal Editability:** All past service records can be inspected, updated, or deleted with real-time recalculation.
+### 2. Your Own Service Items (user-defined servicing)
+Servicing items are **not pre-defined** — you build your own list, and it is shared by every vehicle on both web and Android:
+- **Add items anywhere:** in **Services → My Items**, or directly while logging a service ("Add Item"). New items are saved for future services and sync instantly to the other app.
+- **Smart suggestions:** as you type an item name, FuelTracker suggests names you've used in earlier service entries (most-used first), so the same part is always recorded under the same name. Picking an existing item reuses it instead of creating a duplicate.
+- **Edit or remove items:** rename, group (optional) or remove an item at any time. Removing an item never changes past service records — they keep the item's name and charge.
+- **Engine-oil flag:** mark one item as **Engine oil** and the oil-change reminder uses it.
+- **Per-item charges:** mark `Yes` for each item done, enter its charge, and optionally copy the items' total into the final bill.
+- **Existing data is kept:** records created with the old built-in checklist are preserved exactly; the items they used are added to your list automatically (nothing is deleted or rewritten).
 
-### 3. Visual Analytics & Component Trends
-- **Component Servicing Frequency & Count Plot:** High-contrast horizontal bar chart ranking parts and systems by how often they have been serviced.
-- **Component Price Analysis Over Time:** Interactive SVG time-series chart tracking price evolution, inflation, minimum, maximum, and average charges for any selected component.
+| Manage your items (desktop) |
+| --- |
+| <img src="docs/screenshots/web-service-items-desktop.jpg" alt="My Service Items list on desktop" width="640"> |
+
+| Name suggestions while typing (phone) | Log a service with your items (phone) |
+| --- | --- |
+| <img src="docs/screenshots/web-item-suggestions-mobile.jpg" alt="Item name suggestions from earlier entries" width="260"> | <img src="docs/screenshots/web-log-service-mobile.jpg" alt="Logging a service with user-defined items on a phone" width="260"> |
+
+### 3. Visual Analytics & Item Trends
+- **Item Servicing Frequency:** Horizontal bar chart ranking your service items by how often they have been serviced.
+- **Item Price Analysis Over Time:** Interactive SVG time-series chart tracking minimum, maximum and average charges for any of your items.
 - **Fuel Mileage Trajectory:** Precision efficiency curves based on physical previous fill-up consumption.
 - **Expenditure Trends:** Refill expenses and pump price trajectory charts.
 
@@ -90,19 +125,18 @@ Unlike ordinary trackers that divide trip distance by fuel poured in the current
 - Track motorcycles (🏍️), scooters (🛵), passenger cars (🚗), and commercial vehicles (🚙).
 - Independent odometer timelines, fuel logs, service history, and lifetime statistics.
 
-### 6. Universal JSON Portability
-- Export and import complete fleet profiles, fuel refill logs, maintenance records, and customized dual oil intervals via `FuelTracker_AutoBackup.json`.
-- Two-stage staged import workflow with validation preview before database population.
-
 ---
 
 ## 🏛️ System Architecture & Workflow
 
 ```text
-       ┌────────────────────────────────────────────────────────┐
-       │                   Universal Web App                    │
-       │                 (React 19 + Vite 8)                    │
-       └──────────────────────────┬─────────────────────────────┘
+   ┌──────────────────────────────┐     ┌──────────────────────────────┐
+   │        Web App (PWA)         │     │     Android App (APK)        │
+   │      React 19 + Vite 8       │     │  Kotlin + Jetpack Compose    │
+   └──────────────┬───────────────┘     └──────────────┬───────────────┘
+                  └──────────────┬─────────────────────┘
+                     Google sign-in (Firebase Auth)
+                                  │
                                   │
        ┌──────────────────────────┴─────────────────────────────┐
        │               Domain Mathematical Engines               │
@@ -117,10 +151,12 @@ Unlike ordinary trackers that divide trip distance by fuel poured in the current
        ┌──────────────────────────┴─────────────────────────────┐
        │             Unified Data Repository (storage.js)       │
        ├──────────────────────────┬─────────────────────────────┤
-       │   Cloud Firestore Sync   │    IndexedDB / Local Cache  │
-       │   users/{uid}/vehicles   │    Backup Export & Import   │
-       │   users/{uid}/services   │    Zero Mutation Safety     │
-       │   users/{uid}/entries    │                             │
+       │   Cloud Firestore Sync   │    Local / Offline Cache    │
+       │   users/{uid}/vehicles   │    Zero Mutation Safety     │
+       │   users/{uid}/services   │                             │
+       │   users/{uid}/fuel_entries                             │
+       │   users/{uid}/service_items  (user-defined items)      │
+       │   users/{uid}/settings/preferences (oil intervals)     │
        └────────────────────────────────────────────────────────┘
 ```
 
@@ -156,6 +192,23 @@ Visit `http://localhost:5173/` in your browser.
 
 ---
 
+## 🤖 Android App Development
+
+The Android app lives in [`app/`](app) (Kotlin, Jetpack Compose, Hilt, Firebase Auth + Firestore, Credential Manager).
+
+```bash
+# Requires JDK 17+ and the Android SDK (platform 34)
+./gradlew :app:assembleRelease     # signed APK -> app/build/outputs/apk/release/FuelTracker.apk
+./gradlew :app:assembleDebug       # debug APK
+```
+
+- Package name: `com.fueltracker.app`.
+- Place your Firebase Android config at `app/google-services.json` (download it from Firebase Console → Project settings → Your apps). It is **git-ignored and never committed**; CI receives it from the `GOOGLE_SERVICES_JSON_BASE64` secret.
+- Release signing reads `keystore.properties` (git-ignored) or the `FT_KEYSTORE_PATH`, `FT_KEYSTORE_PASSWORD`, `FT_KEY_ALIAS`, `FT_KEY_PASSWORD` environment variables. The signing key's SHA-1 and SHA-256 must be added to the Firebase Android app, otherwise Google sign-in fails.
+- [`.github/workflows/android-release.yml`](.github/workflows/android-release.yml) (run manually from the Actions tab once its secrets are added) builds the signed APK and attaches it to a [GitHub Release](https://github.com/K-692/FuelTracker/releases).
+
+---
+
 ## 🛠️ Project Structure
 
 ```text
@@ -164,6 +217,13 @@ FuelTracker/
 │   └── deploy.yml              # GitHub Actions Pages deployment
 ├── App_icon/
 │   └── icon.png                # Brand icon
+├── app/                        # Android app (Kotlin + Jetpack Compose, same Firebase backend)
+│   └── src/main/java/com/fueltracker/
+│       ├── data/cloud/         # Firestore models & repository (shared schema with web)
+│       ├── data/legacy/        # One-time upload of data from the old phone-only app
+│       ├── domain/             # Mileage stats, engine-oil reminder, service-item rules
+│       └── ui/                 # Compose screens: Track, Garage, Refills, Services, Settings
+├── docs/screenshots/           # README screenshots
 ├── web_app/                    # Universal React + Vite Web application
 │   ├── public/
 │   │   ├── icon.png            # App logo & favicon
@@ -172,7 +232,7 @@ FuelTracker/
 │   ├── src/
 │   │   ├── components/         # Navbar, Services, ServiceModal, Dashboard, Analytics, Settings, etc.
 │   │   ├── index.css           # Mobile-first design system (themes, breakpoints, responsive tables & sheets)
-│   │   ├── domain/             # FuelCalculator, serviceComponents (60 items), serviceCalculator
+│   │   ├── domain/             # FuelCalculator, serviceItems (user-defined items), serviceCalculator
 │   │   ├── services/           # Firebase Auth, Cloud Firestore & unified storage repository
 │   │   └── utils/              # DD/Apr/YYYY date formatter
 │   └── vite.config.js          # Vite configuration

@@ -12,6 +12,7 @@
 import { 
   collection, 
   doc, 
+  getDoc,
   getDocs, 
   setDoc, 
   deleteDoc, 
@@ -26,6 +27,7 @@ const STORAGE_KEYS = {
   VEHICLES: 'fueltracker_vehicles',
   ENTRIES: 'fueltracker_entries',
   SERVICES: 'fueltracker_services',
+  SERVICE_ITEMS: 'fueltracker_service_items',
   FUEL_TYPES: 'fueltracker_fuel_types',
   PREFERENCES: 'fueltracker_preferences',
   ACTIVE_VEHICLE: 'fueltracker_active_vehicle_id',
@@ -46,6 +48,9 @@ export const StorageService = {
     }
     if (!localStorage.getItem(STORAGE_KEYS.SERVICES)) {
       localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify([]));
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.SERVICE_ITEMS)) {
+      localStorage.setItem(STORAGE_KEYS.SERVICE_ITEMS, JSON.stringify([]));
     }
     if (!localStorage.getItem(STORAGE_KEYS.FUEL_TYPES)) {
       localStorage.setItem(STORAGE_KEYS.FUEL_TYPES, JSON.stringify(DEFAULT_FUEL_TYPES));
@@ -94,12 +99,40 @@ export const StorageService = {
           const services = servicesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
           const fuelTypes = fuelTypesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+          // User-defined service items are read separately so a rules problem on this
+          // newer collection never blocks vehicles / refills / services from loading.
+          let serviceItems;
+          try {
+            const itemsSnap = await getDocs(collection(db, `users/${user.uid}/service_items`));
+            serviceItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          } catch (itemsErr) {
+            console.warn('Could not read service items from Firestore, using local copy:', itemsErr);
+            serviceItems = this.getLocalServiceItems();
+          }
+
+          // Shared preferences (engine-oil intervals) so web & Android agree
+          let cloudOilKm = null;
+          let cloudOilMonths = null;
+          try {
+            const prefSnap = await getDoc(doc(db, `users/${user.uid}/settings`, 'preferences'));
+            if (prefSnap.exists()) {
+              const p = prefSnap.data();
+              if (Number(p.engineOilInterval) > 0) cloudOilKm = Number(p.engineOilInterval);
+              if (Number(p.engineOilMonthsInterval) > 0) cloudOilMonths = Number(p.engineOilMonthsInterval);
+            }
+          } catch (prefErr) {
+            console.warn('Could not read preferences:', prefErr);
+          }
+          if (cloudOilKm) localStorage.setItem(STORAGE_KEYS.OIL_INTERVAL, String(cloudOilKm));
+          if (cloudOilMonths) localStorage.setItem(STORAGE_KEYS.OIL_MONTHS_INTERVAL, String(cloudOilMonths));
+
           const activeId = localStorage.getItem(STORAGE_KEYS.ACTIVE_VEHICLE) || (vehicles[0]?.id || null);
 
           // Update local cache without destroying existing keys
           localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify(vehicles));
           localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(entries));
           localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify(services));
+          localStorage.setItem(STORAGE_KEYS.SERVICE_ITEMS, JSON.stringify(serviceItems));
           if (fuelTypes.length > 0) {
             localStorage.setItem(STORAGE_KEYS.FUEL_TYPES, JSON.stringify(fuelTypes));
           }
@@ -108,10 +141,11 @@ export const StorageService = {
             vehicles,
             entries,
             services,
+            serviceItems,
             fuelTypes: fuelTypes.length > 0 ? fuelTypes : DEFAULT_FUEL_TYPES,
             activeVehicleId: activeId,
-            engineOilInterval,
-            engineOilMonthsInterval,
+            engineOilInterval: cloudOilKm || engineOilInterval,
+            engineOilMonthsInterval: cloudOilMonths || engineOilMonthsInterval,
           };
         }
       } catch (err) {
@@ -125,6 +159,7 @@ export const StorageService = {
       vehicles: localVehicles,
       entries: this.getLocalEntries(),
       services: this.getLocalServices(),
+      serviceItems: this.getLocalServiceItems(),
       fuelTypes: this.getLocalFuelTypes(),
       activeVehicleId: localStorage.getItem(STORAGE_KEYS.ACTIVE_VEHICLE) || (localVehicles[0]?.id || null),
       engineOilInterval,
@@ -156,6 +191,92 @@ export const StorageService = {
       return raw ? JSON.parse(raw) : [];
     } catch {
       return [];
+    }
+  },
+
+  /**
+   * Persists shared preferences (engine-oil intervals) to `users/{uid}/settings/preferences`.
+   */
+  async savePreferences(user, prefs = {}) {
+    if (prefs.engineOilInterval) localStorage.setItem(STORAGE_KEYS.OIL_INTERVAL, String(prefs.engineOilInterval));
+    if (prefs.engineOilMonthsInterval) localStorage.setItem(STORAGE_KEYS.OIL_MONTHS_INTERVAL, String(prefs.engineOilMonthsInterval));
+    if (user && isFirebaseConfigured()) {
+      try {
+        const db = getDb();
+        if (db) {
+          await setDoc(doc(db, `users/${user.uid}/settings`, 'preferences'), { ...prefs, updatedAt: Date.now() }, { merge: true });
+        }
+      } catch (e) {
+        console.error('Firestore savePreferences error:', e);
+      }
+    }
+  },
+
+  getLocalServiceItems() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.SERVICE_ITEMS);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * Saves (creates or updates) one or more user-defined servicing items.
+   * Never deletes anything.
+   */
+  async saveServiceItems(user, itemsToSave = []) {
+    if (!itemsToSave.length) return [];
+    const now = Date.now();
+    const normalized = itemsToSave.map(item => ({
+      ...item,
+      id: String(item.id),
+      name: String(item.name || '').trim(),
+      category: item.category || '',
+      isEngineOil: Boolean(item.isEngineOil),
+      createdAt: item.createdAt || now,
+      updatedAt: now,
+    }));
+
+    const items = this.getLocalServiceItems();
+    normalized.forEach(item => {
+      const idx = items.findIndex(i => i.id === item.id);
+      if (idx >= 0) items[idx] = item; else items.push(item);
+    });
+    localStorage.setItem(STORAGE_KEYS.SERVICE_ITEMS, JSON.stringify(items));
+
+    if (user && isFirebaseConfigured()) {
+      try {
+        const db = getDb();
+        if (db) {
+          const batch = writeBatch(db);
+          normalized.forEach(item => {
+            batch.set(doc(db, `users/${user.uid}/service_items`, item.id), item, { merge: true });
+          });
+          await batch.commit();
+        }
+      } catch (e) {
+        console.error('Firestore saveServiceItems error:', e);
+      }
+    }
+    return normalized;
+  },
+
+  /**
+   * Removes an item from the user's list. Past service records are NOT modified —
+   * they keep the item's name and price inside the record.
+   */
+  async deleteServiceItem(user, itemId) {
+    const items = this.getLocalServiceItems().filter(i => i.id !== itemId);
+    localStorage.setItem(STORAGE_KEYS.SERVICE_ITEMS, JSON.stringify(items));
+
+    if (user && isFirebaseConfigured()) {
+      try {
+        const db = getDb();
+        if (db) await deleteDoc(doc(db, `users/${user.uid}/service_items`, itemId));
+      } catch (e) {
+        console.error('Firestore deleteServiceItem error:', e);
+      }
     }
   },
 
@@ -376,256 +497,5 @@ export const StorageService = {
         console.error('Firestore deleteServiceEntry error:', e);
       }
     }
-  },
-
-  /**
-   * Uploads an entire payload into Firestore in batches.
-   */
-  async uploadToFirestore(user, { vehicles, entries, services = [], fuelTypes }) {
-    if (!user || !isFirebaseConfigured()) return;
-    const db = getDb();
-    if (!db) return;
-
-    try {
-      const batch = writeBatch(db);
-
-      vehicles.forEach(v => {
-        batch.set(doc(db, `users/${user.uid}/vehicles`, String(v.id)), v, { merge: true });
-      });
-
-      entries.forEach(e => {
-        batch.set(doc(db, `users/${user.uid}/fuel_entries`, String(e.id)), e, { merge: true });
-      });
-
-      services.forEach(s => {
-        batch.set(doc(db, `users/${user.uid}/services`, String(s.id)), s, { merge: true });
-      });
-
-      fuelTypes.forEach(ft => {
-        batch.set(doc(db, `users/${user.uid}/fuel_types`, String(ft.id)), ft, { merge: true });
-      });
-
-      await batch.commit();
-    } catch (e) {
-      console.error('Failed to sync data to Firestore:', e);
-    }
-  },
-
-  /**
-   * Generates a comprehensive JSON backup string.
-   */
-  exportBackup(
-    vehicles = [], 
-    fuelTypes = DEFAULT_FUEL_TYPES, 
-    fuelEntries = [], 
-    services = [], 
-    engineOilInterval = 5000,
-    engineOilMonthsInterval = 6
-  ) {
-    const backupObj = {
-      appName: 'FuelTracker',
-      version: 2,
-      exportedAt: new Date().toISOString(),
-      engineOilInterval: Number(engineOilInterval) || 5000,
-      engineOilMonthsInterval: Number(engineOilMonthsInterval) || 6,
-      vehicles: vehicles.map((v, idx) => ({
-        id: String(v.id || `veh_${idx + 1}`),
-        name: v.name || 'Vehicle',
-        registrationNumber: v.registrationNumber || null,
-        vehicleType: (v.vehicleType || 'CAR').toUpperCase(),
-        manufacturer: v.manufacturer || null,
-        model: v.model || null,
-        year: v.year ? parseInt(v.year, 10) : null,
-        createdAt: v.createdAt || Date.now(),
-      })),
-      fuelTypes: (fuelTypes.length > 0 ? fuelTypes : DEFAULT_FUEL_TYPES).map(ft => ({
-        id: String(ft.id),
-        name: ft.name,
-        category: ft.category || 'Petrol',
-        brand: ft.brand || null,
-        isSystemFuel: Boolean(ft.isSystemFuel),
-      })),
-      fuelEntries: fuelEntries.map(e => ({
-        id: String(e.id),
-        vehicleId: String(e.vehicleId),
-        fuelTypeId: String(e.fuelTypeId || 'ft_1'),
-        fuelTypeName: e.fuelTypeName || 'Regular Petrol',
-        odometer: Number(e.odometer) || 0,
-        fuelAmount: Number(e.fuelAmount) || 0,
-        totalCost: Number(e.totalCost) || 0,
-        pricePerLiter: Number(e.pricePerLiter) || 0,
-        refillDate: e.refillDate,
-        notes: e.notes || null,
-        createdAt: e.createdAt || Date.now(),
-      })),
-      services: services.map(s => ({
-        id: String(s.id),
-        vehicleId: String(s.vehicleId),
-        serviceDate: s.serviceDate,
-        odometer: Number(s.odometer) || 0,
-        serviceCenter: s.serviceCenter || null,
-        notes: s.notes || null,
-        totalCost: Number(s.totalCost) || 0,
-        components: s.components || {},
-        createdAt: s.createdAt || Date.now(),
-      })),
-    };
-
-    return JSON.stringify(backupObj, null, 2);
-  },
-
-  /**
-   * Validates a backup JSON string and returns parsed metadata for user confirmation.
-   */
-  validateBackup(jsonString) {
-    let parsed;
-    try {
-      parsed = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
-    } catch {
-      throw new Error('The selected file is not a valid JSON document.');
-    }
-
-    if (!parsed || typeof parsed !== 'object') {
-      throw new Error('Invalid FuelTracker backup format.');
-    }
-
-    const vehicles = Array.isArray(parsed.vehicles) ? parsed.vehicles : [];
-    const entries = Array.isArray(parsed.fuelEntries) 
-      ? parsed.fuelEntries 
-      : (Array.isArray(parsed.entries) ? parsed.entries : []);
-    const services = Array.isArray(parsed.services) ? parsed.services : [];
-    const fuelTypes = Array.isArray(parsed.fuelTypes) ? parsed.fuelTypes : [];
-
-    if (vehicles.length === 0 && entries.length === 0 && services.length === 0) {
-      throw new Error('Backup file contains no vehicles, refills, or service records.');
-    }
-
-    return {
-      vehiclesCount: vehicles.length,
-      entriesCount: entries.length,
-      servicesCount: services.length,
-      fuelTypesCount: fuelTypes.length,
-      engineOilInterval: parsed.engineOilInterval || 5000,
-      engineOilMonthsInterval: parsed.engineOilMonthsInterval || 6,
-      appName: parsed.appName || 'FuelTracker',
-      exportedAt: parsed.exportedAt || null,
-      parsedData: parsed,
-    };
-  },
-
-  /**
-   * Imports a backup JSON file with normalization and validation.
-   */
-  async importBackup(user, jsonString) {
-    const { parsedData } = this.validateBackup(jsonString);
-
-    const importedVehicles = (parsedData.vehicles || []).map((v, idx) => ({
-      id: String(v.id || `veh_${Date.now()}_${idx}`),
-      name: v.name || `Vehicle ${idx + 1}`,
-      registrationNumber: v.registrationNumber || '',
-      vehicleType: (v.vehicleType || 'CAR').toUpperCase(),
-      manufacturer: v.manufacturer || '',
-      model: v.model || '',
-      year: v.year ? parseInt(v.year, 10) : '',
-      createdAt: typeof v.createdAt === 'number' ? v.createdAt : Date.now(),
-    }));
-
-    const importedFuelTypes = (parsedData.fuelTypes && parsedData.fuelTypes.length > 0)
-      ? parsedData.fuelTypes
-      : DEFAULT_FUEL_TYPES;
-
-    const importedEntries = (parsedData.fuelEntries || parsedData.entries || []).map((e, idx) => {
-      let dateStr = new Date().toISOString().split('T')[0];
-      if (typeof e.refillDate === 'number') {
-        const d = new Date(e.refillDate);
-        if (!isNaN(d.getTime())) dateStr = d.toISOString().split('T')[0];
-      } else if (typeof e.refillDate === 'string') {
-        if (/^\d{4}-\d{2}-\d{2}$/.test(e.refillDate)) {
-          dateStr = e.refillDate;
-        } else {
-          const d = new Date(e.refillDate);
-          if (!isNaN(d.getTime())) dateStr = d.toISOString().split('T')[0];
-        }
-      }
-
-      const matchedType = importedFuelTypes.find(ft => String(ft.id) === String(e.fuelTypeId));
-      const fuelTypeName = e.fuelTypeName || matchedType?.name || 'Regular Petrol';
-
-      return {
-        id: String(e.id || `entry_${Date.now()}_${idx}`),
-        vehicleId: String(e.vehicleId),
-        fuelTypeId: String(e.fuelTypeId || 'ft_1'),
-        fuelTypeName,
-        odometer: Number(e.odometer) || 0,
-        fuelAmount: Number(e.fuelAmount) || 0,
-        totalCost: Number(e.totalCost) || 0,
-        pricePerLiter: Number(e.pricePerLiter) || (Number(e.fuelAmount) > 0 ? Number((Number(e.totalCost) / Number(e.fuelAmount)).toFixed(2)) : 0),
-        refillDate: dateStr,
-        notes: e.notes || '',
-        createdAt: typeof e.createdAt === 'number' ? e.createdAt : Date.now(),
-      };
-    });
-
-    const importedServices = (parsedData.services || []).map((s, idx) => {
-      let dateStr = new Date().toISOString().split('T')[0];
-      if (typeof s.serviceDate === 'number') {
-        const d = new Date(s.serviceDate);
-        if (!isNaN(d.getTime())) dateStr = d.toISOString().split('T')[0];
-      } else if (typeof s.serviceDate === 'string') {
-        if (/^\d{4}-\d{2}-\d{2}$/.test(s.serviceDate)) {
-          dateStr = s.serviceDate;
-        } else {
-          const d = new Date(s.serviceDate);
-          if (!isNaN(d.getTime())) dateStr = d.toISOString().split('T')[0];
-        }
-      }
-
-      return {
-        id: String(s.id || `srv_${Date.now()}_${idx}`),
-        vehicleId: String(s.vehicleId),
-        serviceDate: dateStr,
-        odometer: Number(s.odometer) || 0,
-        serviceCenter: s.serviceCenter || '',
-        notes: s.notes || '',
-        totalCost: Number(s.totalCost) || 0,
-        components: s.components || {},
-        createdAt: typeof s.createdAt === 'number' ? s.createdAt : Date.now(),
-      };
-    });
-
-    const engineOilInterval = Number(parsedData.engineOilInterval) || 5000;
-    const engineOilMonthsInterval = Number(parsedData.engineOilMonthsInterval) || 6;
-    localStorage.setItem(STORAGE_KEYS.OIL_INTERVAL, String(engineOilInterval));
-    localStorage.setItem(STORAGE_KEYS.OIL_MONTHS_INTERVAL, String(engineOilMonthsInterval));
-
-    // Save to local storage
-    localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify(importedVehicles));
-    localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(importedEntries));
-    localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify(importedServices));
-    localStorage.setItem(STORAGE_KEYS.FUEL_TYPES, JSON.stringify(importedFuelTypes));
-
-    if (importedVehicles.length > 0) {
-      localStorage.setItem(STORAGE_KEYS.ACTIVE_VEHICLE, importedVehicles[0].id);
-    }
-
-    // Sync to Firestore if signed in
-    if (user && isFirebaseConfigured()) {
-      await this.uploadToFirestore(user, {
-        vehicles: importedVehicles,
-        entries: importedEntries,
-        services: importedServices,
-        fuelTypes: importedFuelTypes,
-      });
-    }
-
-    return {
-      vehicles: importedVehicles,
-      entries: importedEntries,
-      services: importedServices,
-      fuelTypes: importedFuelTypes,
-      activeVehicleId: importedVehicles[0]?.id || null,
-      engineOilInterval,
-      engineOilMonthsInterval,
-    };
   }
 };

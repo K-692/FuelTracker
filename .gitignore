@@ -17,3 +17,12 @@ web_app/dist/
 web_app/.env
 web_app/.env.local
 web_app/.env.*.local
+# Android signing secrets (never commit)
+keystore.properties
+*.jks
+*.keystore
+/app/build
+
+# Firebase Android client config (kept local; CI gets it from a secret)
+google-services.json
+app/google-services.json

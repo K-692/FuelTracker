@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { FuelCalculator } from '../domain/FuelCalculator';
 import { ServiceCalculator } from '../domain/serviceCalculator';
-import { SERVICE_COMPONENTS } from '../domain/serviceComponents';
+import { resolveItemName, getEngineOilItemIds } from '../domain/serviceItems';
 import { LineChart, BarChart, HorizontalBarChart } from './Charts';
 
 export function Analytics({ 
@@ -22,6 +22,7 @@ export function Analytics({
   onSelectVehicle, 
   entries = [],
   services = [],
+  serviceItems = [],
   currency = '₹',
   unit = 'km'
 }) {
@@ -59,16 +60,17 @@ export function Analytics({
 
   // Component frequency analytics for services
   const componentFrequencies = useMemo(() => {
-    return ServiceCalculator.calculateComponentFrequency(vehicleServices);
-  }, [vehicleServices]);
+    return ServiceCalculator.calculateComponentFrequency(vehicleServices, serviceItems);
+  }, [vehicleServices, serviceItems]);
 
   // Set default selected component to first serviced component if 'engine_oil' is not serviced
   const activeSelectedComponentId = useMemo(() => {
     if (componentFrequencies.some(c => c.id === selectedComponentId)) {
       return selectedComponentId;
     }
-    return componentFrequencies[0]?.id || 'engine_oil';
-  }, [componentFrequencies, selectedComponentId]);
+    const oilId = getEngineOilItemIds(serviceItems).find(id => componentFrequencies.some(c => c.id === id));
+    return oilId || componentFrequencies[0]?.id || '';
+  }, [componentFrequencies, selectedComponentId, serviceItems]);
 
   // Component price trajectory analytics for active selected component
   const componentPriceTrajectory = useMemo(() => {
@@ -92,8 +94,8 @@ export function Analytics({
 
   // Active component definition
   const activeComponentDef = useMemo(() => {
-    return SERVICE_COMPONENTS.find(c => c.id === activeSelectedComponentId) || { name: activeSelectedComponentId };
-  }, [activeSelectedComponentId]);
+    return { id: activeSelectedComponentId, name: resolveItemName(activeSelectedComponentId, serviceItems) };
+  }, [activeSelectedComponentId, serviceItems]);
 
   return (
     <div className="analytics-container">
@@ -438,11 +440,11 @@ export function Analytics({
                       onChange={(e) => setSelectedComponentId(e.target.value)}
                     >
                       {componentFrequencies.length === 0 ? (
-                        <option value="engine_oil">Engine oil</option>
+                        <option value="">No items serviced yet</option>
                       ) : (
                         componentFrequencies.map(c => (
                           <option key={c.id} value={c.id}>
-                            #{c.number} {c.name} ({c.count}x)
+                            {c.name} ({c.count}x)
                           </option>
                         ))
                       )}

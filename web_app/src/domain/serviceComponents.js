@@ -1,6 +1,10 @@
 /**
  * serviceComponents.js
- * Master catalogue of the 60 vehicle servicing components and systems.
+ * LEGACY catalogue of the 60 components that older versions of FuelTracker pre-defined.
+ *
+ * Servicing items are now user-defined (see serviceItems.js). This list is kept ONLY
+ * to resolve readable names for records created before that change; it is never
+ * shown to users as a default list.
  * 
  * Labels:
  * - Both: Applicable to both passenger cars and motorcycles/scooters.

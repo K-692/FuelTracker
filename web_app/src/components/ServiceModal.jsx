@@ -8,13 +8,12 @@ import {
   Calendar, 
   Gauge, 
   Building2, 
-  FileText 
+  FileText,
+  Plus,
+  Droplet
 } from 'lucide-react';
-import { 
-  SERVICE_CATEGORIES, 
-  getComponentsForVehicle, 
-  getDefaultComponentsState 
-} from '../domain/serviceComponents';
+import { sortServiceItems, isEngineOilItem, resolveItemName, getItemNameSuggestions } from '../domain/serviceItems';
+import { ItemNameInput } from './ItemNameInput';
 
 export function ServiceModal({
   isOpen,
@@ -24,18 +23,22 @@ export function ServiceModal({
   activeVehicle = null,
   currency = '₹',
   unit = 'km',
-  latestOdometer = 0
+  latestOdometer = 0,
+  serviceItems = [],
+  services = [],
+  onAddServiceItem
 }) {
   const [serviceDate, setServiceDate] = useState('');
   const [odometer, setOdometer] = useState('');
   const [serviceCenter, setServiceCenter] = useState('');
   const [notes, setNotes] = useState('');
   const [totalCost, setTotalCost] = useState('');
-  const [componentsState, setComponentsState] = useState(getDefaultComponentsState);
-  
-  const [forceAllComponents, setForceAllComponents] = useState(false);
+  const [componentsState, setComponentsState] = useState({});
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemIsOil, setNewItemIsOil] = useState(false);
+  const [isAddingItem, setIsAddingItem] = useState(false);
   const [error, setError] = useState('');
 
   // Synchronize modal state with initialData or defaults
@@ -47,17 +50,15 @@ export function ServiceModal({
       setNotes(initialData.notes || '');
       setTotalCost(initialData.totalCost !== undefined && initialData.totalCost !== null ? String(initialData.totalCost) : '');
 
-      const base = getDefaultComponentsState();
+      const base = {};
       if (initialData.components) {
-        Object.keys(initialData.components).forEach(key => {
-          if (base[key]) {
-            base[key] = {
-              done: Boolean(initialData.components[key].done),
-              price: initialData.components[key].price !== undefined && initialData.components[key].price !== null 
-                ? initialData.components[key].price 
-                : '',
-            };
-          }
+        Object.entries(initialData.components).forEach(([key, data]) => {
+          if (!data) return;
+          base[key] = {
+            done: Boolean(data.done),
+            price: data.price !== undefined && data.price !== null ? data.price : '',
+            name: data.name || '',
+          };
         });
       }
       setComponentsState(base);
@@ -67,34 +68,38 @@ export function ServiceModal({
       setServiceCenter('');
       setNotes('');
       setTotalCost('');
-      setComponentsState(getDefaultComponentsState());
+      setComponentsState({});
     }
     setError('');
     setSearchQuery('');
-    setSelectedCategory('ALL');
+    setNewItemName('');
+    setNewItemIsOil(false);
   }, [initialData, isOpen, latestOdometer]);
 
   const vehicleType = activeVehicle?.vehicleType || 'CAR';
 
-  // Visible components filtered by vehicle type and filters
-  const visibleComponents = useMemo(() => {
-    let list = getComponentsForVehicle(vehicleType, forceAllComponents);
-
-    if (selectedCategory !== 'ALL') {
-      list = list.filter(c => c.category === selectedCategory);
-    }
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter(c => 
-        c.name.toLowerCase().includes(q) || 
-        c.vehicleLabel.toLowerCase().includes(q) ||
-        String(c.number).includes(q)
-      );
-    }
-
+  // The user's own items, plus any item referenced by this record that is no longer in the list
+  const allItems = useMemo(() => {
+    const list = sortServiceItems(serviceItems);
+    const known = new Set(list.map(i => i.id));
+    Object.entries(componentsState).forEach(([id, data]) => {
+      if (data?.done && !known.has(id)) {
+        list.push({ id, name: resolveItemName(id, serviceItems, data), category: '', isEngineOil: false, orphan: true });
+      }
+    });
     return list;
-  }, [vehicleType, forceAllComponents, selectedCategory, searchQuery]);
+  }, [serviceItems, componentsState]);
+
+  const visibleComponents = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return allItems;
+    return allItems.filter(c =>
+      c.name.toLowerCase().includes(q) || (c.category || '').toLowerCase().includes(q)
+    );
+  }, [allItems, searchQuery]);
+
+  // Names used before (current items + past service records) for autocomplete
+  const nameSuggestions = useMemo(() => getItemNameSuggestions(services, serviceItems), [services, serviceItems]);
 
   // Total sum of component-level charges
   const sumOfComponentPrices = useMemo(() => {
@@ -141,6 +146,23 @@ export function ServiceModal({
     });
   };
 
+  const handleAddItem = async () => {
+    const name = newItemName.trim();
+    if (!name || !onAddServiceItem) return;
+    setIsAddingItem(true);
+    try {
+      const item = await onAddServiceItem({ name, isEngineOil: newItemIsOil });
+      if (item) {
+        setComponentsState(prev => ({ ...prev, [item.id]: { done: true, price: prev[item.id]?.price ?? '', name: item.name } }));
+        setNewItemName('');
+        setNewItemIsOil(false);
+        setSearchQuery('');
+      }
+    } finally {
+      setIsAddingItem(false);
+    }
+  };
+
   const handleApplySumToTotal = () => {
     setTotalCost(String(sumOfComponentPrices));
   };
@@ -166,12 +188,20 @@ export function ServiceModal({
     }
 
     // Clean component data: convert prices to numbers
+    // Items marked "Yes" store their charge and name (so history stays readable).
+    // Items switched back to "No" are written as done:false — Firestore merge keeps old map keys.
     const cleanedComponents = {};
     Object.entries(componentsState).forEach(([id, data]) => {
-      cleanedComponents[id] = {
-        done: Boolean(data.done),
-        price: data.done ? (parseFloat(data.price) || 0) : 0,
-      };
+      if (!data) return;
+      if (data.done) {
+        cleanedComponents[id] = {
+          done: true,
+          price: parseFloat(data.price) || 0,
+          name: resolveItemName(id, serviceItems, data),
+        };
+      } else if (initialData?.components?.[id]) {
+        cleanedComponents[id] = { done: false, price: 0 };
+      }
     });
 
     const payload = {
@@ -307,7 +337,7 @@ export function ServiceModal({
             />
           </div>
 
-          {/* Component Checklist & Charges Section */}
+          {/* Service Items Checklist & Charges Section (user-defined items) */}
           <div 
             style={{ 
               background: 'var(--bg-surface-elevated)', 
@@ -317,60 +347,59 @@ export function ServiceModal({
               marginBottom: '20px' 
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
-              <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  Component Maintenance Checklist & Charges
-                  <span className="badge badge-primary" style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
-                    {servicedCount} Serviced
-                  </span>
-                </h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Default is <strong>No</strong>. Select <strong>Yes</strong> if serviced and enter the individual charge.
-                </p>
-              </div>
-
-              {/* Show All vs Type-specific Toggle */}
-              {(vehicleType === 'BIKE' || vehicleType === 'SCOOTER') && (
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  style={{ fontSize: '0.78rem', padding: '4px 8px' }}
-                  onClick={() => setForceAllComponents(prev => !prev)}
-                >
-                  {forceAllComponents ? 'Showing All 60 (Click to filter for 2-wheeler)' : 'Filter: Two-wheeler (Click to show all 60)'}
-                </button>
-              )}
+            <div style={{ marginBottom: '12px' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                Items Serviced & Charges
+                <span className="badge badge-primary" style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
+                  {servicedCount} Serviced
+                </span>
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Your own list of service items. Select <strong>Yes</strong> for each item done and enter its charge. Add new items below — they are saved for future services too.
+              </p>
             </div>
 
-            {/* Filter / Search Bar */}
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
-              <div style={{ position: 'relative', flex: '1 1 180px', minWidth: 0 }}>
+            {/* Add a new item */}
+            <div className="add-item-row">
+              <ItemNameInput
+                value={newItemName}
+                onChange={setNewItemName}
+                onEnter={handleAddItem}
+                suggestions={nameSuggestions}
+                placeholder="Type an item, e.g. Chain lubrication"
+                ariaLabel="New service item name"
+              />
+              <label className="oil-flag" title="Use this item for engine-oil change reminders">
+                <input type="checkbox" checked={newItemIsOil} onChange={(e) => setNewItemIsOil(e.target.checked)} />
+                <Droplet size={13} aria-hidden="true" />
+                <span>Engine oil</span>
+              </label>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleAddItem}
+                disabled={!newItemName.trim() || isAddingItem}
+              >
+                <Plus size={15} />
+                <span>Add Item</span>
+              </button>
+            </div>
+
+            {allItems.length > 6 && (
+              <div style={{ position: 'relative', marginBottom: '12px' }}>
                 <Search size={14} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none' }} />
                 <input 
                   type="text"
                   className="form-input"
-                  style={{ paddingLeft: '32px', fontSize: '0.85rem', padding: '7px 10px 7px 32px' }}
-                  placeholder="Search component (e.g. Engine oil, Brake pads, Coolant)..."
+                  style={{ paddingLeft: '32px', fontSize: '0.85rem' }}
+                  placeholder="Search your items..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
+            )}
 
-              <select
-                className="form-select"
-                style={{ flex: '1 1 160px', width: 'auto', minWidth: 0, fontSize: '0.85rem', padding: '7px 10px' }}
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-              >
-                <option value="ALL">All Categories</option>
-                {Object.values(SERVICE_CATEGORIES).map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Components List Container */}
+            {/* Items List */}
             <div 
               className="component-checklist-list"
               style={{ 
@@ -381,9 +410,14 @@ export function ServiceModal({
                 background: 'var(--bg-surface)'
               }}
             >
-              {visibleComponents.length === 0 ? (
+              {allItems.length === 0 ? (
+                <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+                  <Wrench size={22} style={{ margin: '0 auto 8px auto', display: 'block', opacity: 0.6 }} />
+                  No service items yet. Add the parts or jobs you get serviced (e.g. <em>Engine oil</em>, <em>Air filter</em>) using the box above.
+                </div>
+              ) : visibleComponents.length === 0 ? (
                 <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-                  No components matched your search filter.
+                  No items match "{searchQuery}".
                 </div>
               ) : (
                 visibleComponents.map((comp) => {
@@ -400,90 +434,46 @@ export function ServiceModal({
                         transition: 'background var(--transition-fast)'
                       }}
                     >
-                      {/* Name & Badge */}
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 700, minWidth: '18px' }}>
-                            #{comp.number}
-                          </span>
-                          <span style={{ fontWeight: isDone ? 700 : 500, fontSize: '0.88rem', color: isDone ? 'var(--color-primary)' : 'var(--text-main)' }}>
-                            {comp.name}
-                          </span>
+                      {/* Name & Tags */}
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: isDone ? 700 : 500, fontSize: '0.9rem', color: isDone ? 'var(--color-primary)' : 'var(--text-main)' }}>
+                          {comp.name}
                         </div>
-                        <div style={{ display: 'flex', gap: '6px', marginTop: '2px', marginLeft: '26px' }}>
-                          <span 
-                            style={{ 
-                              fontSize: '0.7rem', 
-                              color: 'var(--text-dim)', 
-                              background: 'var(--bg-surface-elevated)', 
-                              padding: '1px 5px', 
-                              borderRadius: '4px' 
-                            }}
-                          >
-                            {comp.vehicleLabel}
-                          </span>
-                          <span 
-                            style={{ 
-                              fontSize: '0.7rem', 
-                              color: 'var(--text-dim)', 
-                              background: 'var(--bg-surface-elevated)', 
-                              padding: '1px 5px', 
-                              borderRadius: '4px' 
-                            }}
-                          >
-                            {comp.category}
-                          </span>
-                        </div>
+                        {(isEngineOilItem(comp) || comp.category || comp.orphan) && (
+                          <div style={{ display: 'flex', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
+                            {isEngineOilItem(comp) && <span className="item-tag item-tag-oil">Engine oil reminder</span>}
+                            {comp.category && <span className="item-tag">{comp.category}</span>}
+                            {comp.orphan && <span className="item-tag">Removed from list</span>}
+                          </div>
+                        )}
                       </div>
 
                       {/* Yes / No Toggle Segment */}
-                      <div 
-                        style={{ 
-                          display: 'flex', 
-                          background: 'var(--bg-surface-elevated)', 
-                          borderRadius: 'var(--radius-sm)', 
-                          padding: '2px',
-                          border: '1px solid var(--border-subtle)' 
-                        }}
-                      >
+                      <div className="yes-no-toggle" role="group" aria-label={`${comp.name} serviced?`}>
                         <button
                           type="button"
+                          className={!isDone ? 'is-no' : ''}
+                          aria-pressed={!isDone}
                           onClick={() => handleToggleComponent(comp.id, false)}
-                          style={{
-                            padding: '4px 10px',
-                            fontSize: '0.78rem',
-                            fontWeight: !isDone ? 700 : 500,
-                            borderRadius: '5px',
-                            background: !isDone ? 'var(--text-dim)' : 'transparent',
-                            color: !isDone ? '#ffffff' : 'var(--text-muted)',
-                            transition: 'all 0.15s ease'
-                          }}
                         >
                           No
                         </button>
                         <button
                           type="button"
+                          className={isDone ? 'is-yes' : ''}
+                          aria-pressed={isDone}
                           onClick={() => handleToggleComponent(comp.id, true)}
-                          style={{
-                            padding: '4px 10px',
-                            fontSize: '0.78rem',
-                            fontWeight: isDone ? 700 : 500,
-                            borderRadius: '5px',
-                            background: isDone ? 'var(--color-primary)' : 'transparent',
-                            color: isDone ? '#ffffff' : 'var(--text-muted)',
-                            transition: 'all 0.15s ease'
-                          }}
                         >
                           Yes
                         </button>
                       </div>
 
-                      {/* Individual Component Price / Charge */}
+                      {/* Individual Item Charge */}
                       <div style={{ position: 'relative' }}>
                         <span 
                           style={{ 
                             position: 'absolute', 
-                            left: '8px', 
+                            left: '10px', 
                             top: '50%', 
                             transform: 'translateY(-50%)', 
                             fontSize: '0.8rem', 
@@ -495,6 +485,7 @@ export function ServiceModal({
                         </span>
                         <input
                           type="number"
+                          inputMode="decimal"
                           step="any"
                           min="0"
                           disabled={!isDone}
@@ -502,11 +493,10 @@ export function ServiceModal({
                           value={isDone ? item.price : ''}
                           onChange={(e) => handlePriceChange(comp.id, e.target.value)}
                           className="form-input"
+                          aria-label={`${comp.name} charge`}
                           style={{
-                            paddingLeft: '22px',
-                            paddingRight: '6px',
-                            paddingTop: '5px',
-                            paddingBottom: '5px',
+                            paddingLeft: '24px',
+                            paddingRight: '8px',
                             fontSize: '0.85rem',
                             textAlign: 'right',
                             opacity: isDone ? 1 : 0.45,

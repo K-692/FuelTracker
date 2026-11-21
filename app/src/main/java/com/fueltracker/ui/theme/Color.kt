@@ -2,30 +2,18 @@ package com.fueltracker.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Primary = Color(0xFF006C4C)
-val OnPrimary = Color(0xFFFFFFFF)
-val PrimaryContainer = Color(0xFF89F8C7)
-val OnPrimaryContainer = Color(0xFF002114)
+// Brand palette from App_icon/icon.png — same as the web app
+val BrandGreen = Color(0xFF52C41A)
+val BrandGreenDark = Color(0xFF389E0D)
+val BrandYellow = Color(0xFFFADB14)
+val BrandOrange = Color(0xFFFA8C16)
+val BrandDanger = Color(0xFFF5222D)
 
-val Secondary = Color(0xFF4D6357)
-val OnSecondary = Color(0xFFFFFFFF)
-val SecondaryContainer = Color(0xFFCFE9D8)
-val OnSecondaryContainer = Color(0xFF092016)
+val MidnightBg = Color(0xFF0C1322)
+val MidnightSurface = Color(0xFF121C30)
+val MidnightElevated = Color(0xFF18253F)
+val MidnightHover = Color(0xFF1F3050)
 
-val Tertiary = Color(0xFF3D6373)
-val OnTertiary = Color(0xFFFFFFFF)
-val TertiaryContainer = Color(0xFFC1E8FB)
-val OnTertiaryContainer = Color(0xFF001F29)
-
-val Error = Color(0xFFBA1A1A)
-val OnError = Color(0xFFFFFFFF)
-val ErrorContainer = Color(0xFFFFDAD6)
-val OnErrorContainer = Color(0xFF410002)
-
-val Background = Color(0xFFFBFDF9)
-val OnBackground = Color(0xFF191C1A)
-val Surface = Color(0xFFFBFDF9)
-val OnSurface = Color(0xFF191C1A)
-val SurfaceVariant = Color(0xFFDBE5DD)
-val OnSurfaceVariant = Color(0xFF404943)
-val Outline = Color(0xFF707973)
+val LightBg = Color(0xFFF8FAFC)
+val LightSurface = Color(0xFFFFFFFF)
+val LightElevated = Color(0xFFF1F5F9)

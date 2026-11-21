@@ -1,11 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React from 'react';
 import { 
   Sun, 
   Moon, 
   Database, 
-  Download, 
-  Upload, 
-  Check,
   Key, 
   LogIn, 
   LogOut, 
@@ -14,7 +11,6 @@ import {
   Wrench
 } from 'lucide-react';
 import { isFirebaseConfigured } from '../services/firebase';
-import { StorageService } from '../services/storage';
 
 export function Settings({ 
   theme, 
@@ -30,64 +26,9 @@ export function Settings({
   user, 
   onGoogleSignIn, 
   onSignOut,
-  onOpenFirebaseModal,
-  onExportBackup,
-  onImportBackup,
-  showNotification
+  onOpenFirebaseModal
 }) {
-  const fileInputRef = useRef(null);
   const fbReady = isFirebaseConfigured();
-
-  // Staged backup state for explicit submit confirmation
-  const [stagedBackup, setStagedBackup] = useState(null);
-  const [isImporting, setIsImporting] = useState(false);
-
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const text = event.target?.result;
-        if (text) {
-          const validation = StorageService.validateBackup(text);
-          setStagedBackup({
-            fileName: file.name,
-            vehiclesCount: validation.vehiclesCount,
-            entriesCount: validation.entriesCount,
-            servicesCount: validation.servicesCount || 0,
-            engineOilInterval: validation.engineOilInterval || 5000,
-            engineOilMonthsInterval: validation.engineOilMonthsInterval || 6,
-            rawJson: text,
-          });
-          showNotification(`File loaded: ${file.name}. Click 'Submit & Populate Data' to restore.`, 'info');
-        }
-      } catch (err) {
-        showNotification(`Invalid backup file: ${err.message}`, 'error');
-        setStagedBackup(null);
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
-  const handleConfirmImport = async () => {
-    if (!stagedBackup) return;
-    try {
-      setIsImporting(true);
-      await onImportBackup(stagedBackup.rawJson);
-      showNotification(
-        `Successfully restored ${stagedBackup.vehiclesCount} vehicle(s), ${stagedBackup.entriesCount} refill(s), and ${stagedBackup.servicesCount} service record(s)!`, 
-        'success'
-      );
-      setStagedBackup(null);
-    } catch (err) {
-      showNotification(`Import failed: ${err.message}`, 'error');
-    } finally {
-      setIsImporting(false);
-    }
-  };
 
   return (
     <div className="settings-container" style={{ maxWidth: '800px', margin: '0 auto' }}>
@@ -97,7 +38,7 @@ export function Settings({
             System Settings & Preferences
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Customize your visual theme, vehicle service intervals, cloud database connectivity, and data backups.
+            Customize your visual theme, vehicle service intervals, and cloud database connectivity.
           </p>
         </div>
       </div>
@@ -300,80 +241,6 @@ export function Settings({
           </div>
         </div>
 
-        {/* Universal JSON Backup & Restore */}
-        <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-            <Download size={20} color="var(--color-primary)" />
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Data Backup & Recovery (JSON)</h2>
-          </div>
-
-          <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '18px', lineHeight: '1.5' }}>
-            Export or restore your complete fleet data, fuel fill-up logs, and maintenance records into an open JSON document (<code>FuelTracker_AutoBackup.json</code>).
-          </p>
-
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <button className="btn btn-secondary" onClick={onExportBackup}>
-              <Download size={16} />
-              <span>Export Complete JSON Backup</span>
-            </button>
-
-            <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}>
-              <Upload size={16} />
-              <span>Import JSON Backup</span>
-            </button>
-
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              style={{ display: 'none' }} 
-              accept=".json"
-              onChange={handleFileChange}
-            />
-          </div>
-
-          {/* Staged Backup Confirmation Section - Appears only after file selection */}
-          {stagedBackup && (
-            <div 
-              style={{ 
-                marginTop: '18px', 
-                padding: '16px 18px', 
-                borderRadius: 'var(--radius-md)', 
-                background: 'var(--bg-surface-elevated)', 
-                border: '1px solid var(--border-active)' 
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <CheckCircle2 size={18} color="var(--color-green)" />
-                <h4 style={{ fontSize: '0.96rem', fontWeight: 800 }}>Backup File Ready to Populate</h4>
-              </div>
-              <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginBottom: '14px', lineHeight: '1.5' }}>
-                Loaded file: <strong>{stagedBackup.fileName}</strong><br />
-                Found: <strong style={{ color: 'var(--color-green)' }}>{stagedBackup.vehiclesCount} vehicle profile(s)</strong>,{' '}
-                <strong style={{ color: 'var(--color-green)' }}>{stagedBackup.entriesCount} fuel refill(s)</strong>, and{' '}
-                <strong style={{ color: 'var(--color-green)' }}>{stagedBackup.servicesCount} service record(s)</strong>.
-              </p>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <button 
-                  className="btn btn-primary" 
-                  onClick={handleConfirmImport}
-                  disabled={isImporting}
-                  style={{ padding: '8px 18px' }}
-                >
-                  <Check size={16} />
-                  <span>{isImporting ? 'Populating...' : 'Submit & Populate Data'}</span>
-                </button>
-                <button 
-                  className="btn btn-secondary" 
-                  onClick={() => setStagedBackup(null)}
-                  disabled={isImporting}
-                  style={{ padding: '8px 14px' }}
-                >
-                  <span>Cancel</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

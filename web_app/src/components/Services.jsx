@@ -13,11 +13,13 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   Clock, 
-  Car
+  Car,
+  ListChecks
 } from 'lucide-react';
 import { formatDate } from '../utils/dateFormatter';
 import { ServiceCalculator } from '../domain/serviceCalculator';
-import { SERVICE_COMPONENTS } from '../domain/serviceComponents';
+import { getEngineOilItemIds, getServicedItems } from '../domain/serviceItems';
+import { ServiceItemsManager } from './ServiceItemsManager';
 
 export function Services({
   vehicles = [],
@@ -32,9 +34,14 @@ export function Services({
   currency = '₹',
   unit = 'km',
   engineOilInterval = 5000,
-  engineOilMonthsInterval = 6
+  engineOilMonthsInterval = 6,
+  serviceItems = [],
+  onAddServiceItem,
+  onUpdateServiceItem,
+  onDeleteServiceItem
 }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [showItemsManager, setShowItemsManager] = useState(false);
   const [expandedCardId, setExpandedCardId] = useState(null);
 
   const activeVehicle = vehicles.find(v => v.id === activeVehicleId) || vehicles[0];
@@ -54,9 +61,11 @@ export function Services({
       vehicleServices,
       vehicleFuelEntries,
       engineOilInterval,
-      engineOilMonthsInterval
+      engineOilMonthsInterval,
+      undefined,
+      getEngineOilItemIds(serviceItems)
     );
-  }, [vehicleServices, vehicleFuelEntries, engineOilInterval, engineOilMonthsInterval]);
+  }, [vehicleServices, vehicleFuelEntries, engineOilInterval, engineOilMonthsInterval, serviceItems]);
 
   // Filtered services based on search query
   const filteredServices = useMemo(() => {
@@ -70,15 +79,11 @@ export function Services({
       const matchOdo = String(s.odometer).includes(q);
       
       // Check if any serviced component matches query
-      const matchComp = s.components && Object.entries(s.components).some(([compId, data]) => {
-        if (!data || !data.done) return false;
-        const compDef = SERVICE_COMPONENTS.find(c => c.id === compId);
-        return compDef && compDef.name.toLowerCase().includes(q);
-      });
+      const matchComp = getServicedItems(s, serviceItems).some(it => it.name.toLowerCase().includes(q));
 
       return matchCenter || matchNotes || matchDate || matchOdo || matchComp;
     });
-  }, [vehicleServices, searchQuery]);
+  }, [vehicleServices, searchQuery, serviceItems]);
 
   // Total maintenance expenditure for this vehicle
   const lifetimeMetrics = useMemo(() => {
@@ -132,15 +137,35 @@ export function Services({
           </p>
         </div>
 
-        <button 
-          className="btn btn-primary"
-          onClick={onOpenAddService}
-          style={{ padding: '9px 18px', fontWeight: 700 }}
-        >
-          <Plus size={16} />
-          <span>Log Service</span>
-        </button>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button 
+            className="btn btn-secondary"
+            onClick={() => setShowItemsManager(v => !v)}
+            aria-expanded={showItemsManager}
+          >
+            <ListChecks size={16} />
+            <span>My Items ({serviceItems.length})</span>
+          </button>
+          <button 
+            className="btn btn-primary"
+            onClick={onOpenAddService}
+            style={{ padding: '9px 18px', fontWeight: 700 }}
+          >
+            <Plus size={16} />
+            <span>Log Service</span>
+          </button>
+        </div>
       </div>
+
+      {(showItemsManager || serviceItems.length === 0) && (
+        <ServiceItemsManager
+          serviceItems={serviceItems}
+          services={services}
+          onAdd={onAddServiceItem}
+          onUpdate={onUpdateServiceItem}
+          onDelete={onDeleteServiceItem}
+        />
+      )}
 
       {/* Vehicle Selector Ribbon */}
       <div className="vehicle-selector-bar" style={{ marginBottom: '22px' }}>
@@ -443,21 +468,7 @@ export function Services({
             const isExpanded = expandedCardId === service.id;
 
             // Extract serviced components
-            const servicedComponentsList = [];
-            if (service.components) {
-              Object.entries(service.components).forEach(([id, data]) => {
-                if (data && data.done) {
-                  const def = SERVICE_COMPONENTS.find(c => c.id === id);
-                  servicedComponentsList.push({
-                    id,
-                    name: def ? def.name : id,
-                    price: Number(data.price) || 0,
-                    label: def?.vehicleLabel || 'Both',
-                    category: def?.category || 'General',
-                  });
-                }
-              });
-            }
+            const servicedComponentsList = getServicedItems(service, serviceItems);
 
             return (
               <div 
@@ -530,7 +541,7 @@ export function Services({
                 <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                      Serviced Components ({servicedComponentsList.length}):
+                      Items Serviced ({servicedComponentsList.length}):
                     </div>
                     <button
                       className="btn btn-ghost"
@@ -538,9 +549,9 @@ export function Services({
                       onClick={() => toggleExpand(service.id)}
                     >
                       {isExpanded ? (
-                        <>Hide Complete Checklist <ChevronUp size={13} style={{ marginLeft: '3px' }} /></>
+                        <>Hide Charges <ChevronUp size={13} style={{ marginLeft: '3px' }} /></>
                       ) : (
-                        <>View Full 60-Item Checklist <ChevronDown size={13} style={{ marginLeft: '3px' }} /></>
+                        <>Show Item Charges <ChevronDown size={13} style={{ marginLeft: '3px' }} /></>
                       )}
                     </button>
                   </div>
@@ -577,80 +588,46 @@ export function Services({
                   </div>
                 </div>
 
-                {/* Collapsible Complete 60-Item Checklist Drawer */}
+                {/* Item charge breakdown */}
                 {isExpanded && (
                   <div 
                     style={{ 
                       marginTop: '16px', 
-                      paddingTop: '16px', 
-                      borderTop: '1px dashed var(--border-medium)',
                       background: 'var(--bg-surface-elevated)',
                       borderRadius: 'var(--radius-sm)',
                       padding: '14px'
                     }}
                   >
                     <div style={{ fontSize: '0.85rem', fontWeight: 800, marginBottom: '10px' }}>
-                      Detailed 60-Component Status Breakdown
+                      Item Charges
                     </div>
-
-                    <div 
-                      style={{ 
-                        display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', 
-                        gap: '8px',
-                        maxHeight: '360px',
-                        overflowY: 'auto',
-                        paddingRight: '6px'
-                      }}
-                    >
-                      {SERVICE_COMPONENTS.map(comp => {
-                        const itemData = service.components?.[comp.id];
-                        const isDone = itemData && itemData.done;
-                        const price = Number(itemData?.price) || 0;
-
-                        return (
+                    {servicedComponentsList.length === 0 ? (
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>No individual items recorded for this service.</div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: '8px' }}>
+                        {servicedComponentsList.map(it => (
                           <div
-                            key={comp.id}
+                            key={it.id}
                             style={{
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
-                              padding: '6px 10px',
-                              borderRadius: '4px',
-                              background: isDone ? 'rgba(82, 196, 26, 0.08)' : 'var(--bg-surface)',
-                              border: `1px solid ${isDone ? 'var(--color-primary-glow)' : 'var(--border-subtle)'}`,
-                              fontSize: '0.8rem'
+                              gap: '8px',
+                              padding: '8px 10px',
+                              borderRadius: '6px',
+                              background: 'var(--bg-surface)',
+                              border: '1px solid var(--border-subtle)',
+                              fontSize: '0.84rem'
                             }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span style={{ color: 'var(--text-dim)', fontSize: '0.72rem', minWidth: '18px' }}>
-                                #{comp.number}
-                              </span>
-                              <span style={{ fontWeight: isDone ? 700 : 400, color: isDone ? 'var(--color-primary)' : 'var(--text-main)' }}>
-                                {comp.name}
-                              </span>
-                            </div>
-
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span 
-                                style={{
-                                  fontSize: '0.72rem',
-                                  fontWeight: 700,
-                                  color: isDone ? 'var(--color-primary)' : 'var(--text-dim)'
-                                }}
-                              >
-                                {isDone ? 'YES' : 'NO'}
-                              </span>
-                              {isDone && price > 0 && (
-                                <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
-                                  {currency}{price.toLocaleString()}
-                                </span>
-                              )}
-                            </div>
+                            <span style={{ fontWeight: 700, color: 'var(--color-primary)', minWidth: 0 }}>{it.name}</span>
+                            <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+                              {it.price > 0 ? `${currency}${it.price.toLocaleString()}` : '—'}
+                            </span>
                           </div>
-                        );
-                      })}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
